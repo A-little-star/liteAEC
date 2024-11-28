@@ -4,8 +4,24 @@
 #define FRAME_SIZE 256
 #define WINDOW_SIZE 512
 #define FFT_LEN 512
+#define FRAME_SIZE_SHIFT 0
 
 #define FREQ_SIZE ((FFT_LEN)/2 + 1)
+
+#define NB_BANDS 100
+#define CEPS_MEM 8
+#define NB_DELTA_CEPS 6
+
+#define NB_FEATURES (NB_BANDS+2*NB_DELTA_CEPS)
+
+#define SQUARE(x) ((x)*(x))
+
+static const int eband5ms[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+                                    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
+                                    34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 48,  50,  52,  54,  56,  58,  60,  62,  64,  66,  68,  70,  72,
+                                    74,  76,  78,  80,  82,  84,  86,  88,  90,  92,  94,  96,  98,
+                                    102, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 146, 152,
+                                    158, 164, 170, 176, 182, 188, 194, 200, 208, 216, 224, 232, 240, 256};
 
 static const float kBlocks320w512[512] = {
  0.00001478,     0.00013306,     0.00036959,     0.00072435,

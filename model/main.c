@@ -6,6 +6,7 @@
 #include "../include/depthwise_conv2d.h"
 #include "../include/wavreader.h"
 #include "../include/stft.h"
+#include "../include/typedef.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -36,7 +37,10 @@ int main() {
     Tensor input_wav = create_tensor(1, num_samples, 1);
     init_tensor(&input_wav, audio_data);
 
-    Tensor cspecs = stft(input_wav);
+    int length = num_samples / FRAME_SIZE;
+    Tensor cspecs = create_tensor(2, length, FREQ_SIZE);
+    Tensor features = create_tensor(1, length, NB_FEATURES);
+    stft(&input_wav, &cspecs, &features);
 
     FILE *file = fopen(output_file, "w");
     if (!file) {
@@ -45,7 +49,7 @@ int main() {
         return 1;
     }
 
-    int C = cspecs.C, T = cspecs.T, F = cspecs.F;
+    int T = cspecs.T, F = cspecs.F;
     for (int t = 0; t < T; t ++ ) {
         for (int f = 0; f < F; f ++ ) {
             float tfbin = get_value(&cspecs, 0, t, f);
