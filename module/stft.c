@@ -1,11 +1,13 @@
+#include "../include/_kiss_fft_guts.h"
+#include "../include/typedef.h"
+#include "../include/kiss_fft.h"
+#include "../include/matrix_op.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
-#include "./include/kiss_fft.h"
-#include "./include/_kiss_fft_guts.h"
-#include "./include/typedef.h"
 #include <math.h>
+#include <assert.h>
 
 typedef struct {
   int init;
@@ -78,4 +80,42 @@ static void apply_window(float *x) {
     x[i] *= common.window[i];
   
   }
+}
+
+Tensor stft(Tensor input) {
+  int channel = input.C, length = input.T, dim = input.F;
+  assert((channel == 1) && (dim == 1));
+
+  int win_len = WINDOW_SIZE;
+  int hop_len = FRAME_SIZE;
+  int fft_len = FFT_LEN;
+
+  int num_frame = length / hop_len;
+  Tensor cspecs = create_tensor(2, num_frame, FREQ_SIZE);  // 复数谱 [2, T, F]
+
+  for (int s = 0, num_frame = 0; s + win_len < length; s += hop_len, num_frame ++ ) {
+    float x[FFT_LEN];
+    kiss_fft_cpx X[FREQ_SIZE];
+
+    for (int i = 0; i < WINDOW_SIZE; i ++ )
+      x[i] = input.data[s + i];
+    for (int i = WINDOW_SIZE; i < FFT_LEN; i ++ )
+      x[i] = 0;
+    
+    apply_window(x);
+    if (num_frame == 300) {
+      printf("wav: \n");
+      for (int i = 0; i < FFT_LEN; i ++ )
+        printf("%f ", x[i]);
+      printf("\n");
+    }
+    
+    forward_transform(X, x);
+
+    for (int i = 0; i < FREQ_SIZE; i ++ ) {
+      set_value(&cspecs, 0, num_frame, i, (float)X[i].r);
+      set_value(&cspecs, 1, num_frame, i, X[i].i);
+    }
+  }
+  return cspecs;
 }

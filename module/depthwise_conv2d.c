@@ -46,6 +46,6 @@ Tensor depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor input) {
     Tensor mid = conv2d_forward(&depth_conv_layer, input);
     Tensor out = conv2d_forward(&point_conv_layer, mid);
     // 销毁中间变量
-    delete_tensor(mid);
+    delete_tensor(&mid);
     return out;
 }

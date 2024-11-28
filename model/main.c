@@ -4,47 +4,97 @@
 #include "../include/elu.h"
 #include "../include/linear.h"
 #include "../include/depthwise_conv2d.h"
+#include "../include/wavreader.h"
+#include "../include/stft.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
+// int main() {
+//     Tensor t = create_tensor(2, 4, 3);
+//     float data[24] = {
+//         0.1, 0.2, 0.3,  0.4, 0.5, 0.6,  0.7, 0.8, 0.9,  1.0, 1.1, 1.2, 
+//         0.1, 0.1, 0.1,  0.1, 0.1, 0.1,  0.1, 0.1, 0.1,  0.1, 0.1, 0.1
+//     };
+//     init_tensor(&t, data);
+//     set_value(&t, 1, 3, 2, 10);
+//     float out = get_value(&t, 1, 3, 2);
+//     for (int i = 0; i < 24; i ++ ) {
+//         printf("%f ", t.data[i]);
+//     }
+//     return 0;
+// }
+
 int main() {
-    // 输入参数
-    int in_channels = 3, in_h = 4, in_w = 4;
-    float input_data[3 * 4 * 4] = {
-        1, 2, 3, 4,   5, 6, 7, 8,   9, 10, 11, 12,  13, 14, 15, 16, // 通道 1
-        1, 1, 1, 1,   1, 1, 1, 1,   1, 1, 1, 1,    1, 1, 1, 1, // 通道 2
-        0, 1, 0, 1,   0, 1, 0, 1,   0, 1, 0, 1,    0, 1, 0, 1  // 通道 3
-    };
-    Tensor input = create_tensor(3, 4, 4);
-    init_tensor(&input, input_data);
+    const char *filename = "example.wav";    // 替换为实际文件名
+    const char *output_file = "output.txt"; // 输出文件名
+    int num_samples;                        // 样本数
+    int sample_rate;                        // 采样率
+    float *audio_data = read_wav_file(filename, &num_samples, &sample_rate);
 
-    // 卷积层参数
-    int out_channels = 2, kernel_h = 3, kernel_w = 3, stride_h = 1, stride_w = 1;
-    int padding_h = 1, padding_w = 1; // 使用 0 填充
-    int group = 1;
-    Conv2DLayer conv_layer = create_conv2d_layer(in_channels, out_channels,
-                                                 kernel_h, kernel_w,
-                                                 stride_h, stride_w,
-                                                 padding_h, padding_w,
-                                                 group);
-    DepthwiseConv2DLayer depthwise_conv2d_layer = create_depthwise_conv2d_layer(in_channels, out_channels, 
-                                                                                kernel_h, kernel_w,
-                                                                                stride_h, stride_w, padding_h, padding_w);
+    Tensor input_wav = create_tensor(1, num_samples, 1);
+    init_tensor(&input_wav, audio_data);
 
-    // 执行卷积
-    Tensor output = conv2d_forward(&conv_layer, input);
-    Tensor output_dwconv = depthwise_conv2d_forward(&depthwise_conv2d_layer, input);
+    Tensor cspecs = stft(input_wav);
 
-    // 打印输出结果
-    printf("Output conv2d:\n");
-    print_tensor(&output);
-    printf("Output dwconv2d:\n");
-    print_tensor(&output_dwconv);
+    FILE *file = fopen(output_file, "w");
+    if (!file) {
+        perror("Error opening output file");
+        free(audio_data);
+        return 1;
+    }
 
-    // 释放内存
-    free_conv2d_layer(&conv_layer);
-    free_depthwise_conv2d_layer(&depthwise_conv2d_layer);
+    int C = cspecs.C, T = cspecs.T, F = cspecs.F;
+    for (int t = 0; t < T; t ++ ) {
+        for (int f = 0; f < F; f ++ ) {
+            float tfbin = get_value(&cspecs, 0, t, f);
+            fprintf(file, "%f ", tfbin);
+        }
+        fprintf(file, "\n");
+    }
+
+    fclose(file); // 关闭文件
 
     return 0;
 }
+
+// int main() {
+//     // 输入参数
+//     int in_channels = 3, in_h = 4, in_w = 4;
+//     float input_data[3 * 4 * 4] = {
+//         1, 2, 3, 4,   5, 6, 7, 8,   9, 10, 11, 12,  13, 14, 15, 16, // 通道 1
+//         1, 1, 1, 1,   1, 1, 1, 1,   1, 1, 1, 1,    1, 1, 1, 1, // 通道 2
+//         0, 1, 0, 1,   0, 1, 0, 1,   0, 1, 0, 1,    0, 1, 0, 1  // 通道 3
+//     };
+//     Tensor input = create_tensor(3, 4, 4);
+//     init_tensor(&input, input_data);
+
+//     // 卷积层参数
+//     int out_channels = 2, kernel_h = 3, kernel_w = 3, stride_h = 1, stride_w = 1;
+//     int padding_h = 1, padding_w = 1; // 使用 0 填充
+//     int group = 1;
+//     Conv2DLayer conv_layer = create_conv2d_layer(in_channels, out_channels,
+//                                                  kernel_h, kernel_w,
+//                                                  stride_h, stride_w,
+//                                                  padding_h, padding_w,
+//                                                  group);
+//     DepthwiseConv2DLayer depthwise_conv2d_layer = create_depthwise_conv2d_layer(in_channels, out_channels, 
+//                                                                                 kernel_h, kernel_w,
+//                                                                                 stride_h, stride_w, padding_h, padding_w);
+
+//     // 执行卷积
+//     Tensor output = conv2d_forward(&conv_layer, input);
+//     Tensor output_dwconv = depthwise_conv2d_forward(&depthwise_conv2d_layer, input);
+
+//     // 打印输出结果
+//     printf("Output conv2d:\n");
+//     print_tensor(&output);
+//     printf("Output dwconv2d:\n");
+//     print_tensor(&output_dwconv);
+
+//     // 释放内存
+//     free_conv2d_layer(&conv_layer);
+//     free_depthwise_conv2d_layer(&depthwise_conv2d_layer);
+
+//     return 0;
+// }

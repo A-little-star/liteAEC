@@ -12,11 +12,15 @@ typedef struct {
 // 创建张量
 Tensor create_tensor(int c, int t, int f);
 // 删除张量
-void delete_tensor(Tensor m);
+void delete_tensor(Tensor *tensor);
 // 初始化张量数据
 void init_tensor(Tensor* tensor, float* values);
 // 打印张量数据
 void print_tensor(const Tensor* tensor);
+// 将索引为[c_idx, t_idx, f_idx]的元素的值设为value
+void set_value(Tensor *tensor, int c_idx, int t_idx, int f_idx, float value);
+// 获取索引为[c_idx, t_idx, f_idx]的元素的值
+float get_value(Tensor *tensor, int c_idx, int t_idx, int f_idx);
 
 // 矩阵运算
 

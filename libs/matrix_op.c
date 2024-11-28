@@ -18,9 +18,9 @@ Tensor create_tensor(int c, int t, int f) {
 }
 
 // 释放张量所占的内存空间
-void delete_tensor(Tensor tensor) {
-    free(tensor.data);
-    tensor.data = NULL; // 避免悬挂指针
+void delete_tensor(Tensor *tensor) {
+    free(tensor->data);
+    tensor->data = NULL; // 避免悬挂指针
 }
 
 // 初始化张量数据
@@ -51,6 +51,17 @@ void print_tensor(const Tensor* tensor) {
         }
         printf("\n");
     }
+}
+
+void set_value(Tensor *tensor, int c_idx, int t_idx, int f_idx, float value) {
+    int channel = tensor->C, time = tensor->T, freq = tensor->F;
+    tensor->data[(c_idx * time + t_idx) * freq + f_idx] = value;
+}
+
+float get_value(Tensor *tensor, int c_idx, int t_idx, int f_idx) {
+    int channel = tensor->C, time = tensor->T, freq = tensor->F;
+    float out = tensor->data[(c_idx * time + t_idx) * freq + f_idx];
+    return out;
 }
 
 // 逐元素加法
