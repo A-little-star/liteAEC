@@ -35,9 +35,17 @@ DepthwiseConv2DLayer create_depthwise_conv2d_layer(int in_channels, int out_chan
     return layer;
 };
 
-void depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, float *input, int in_h, int in_w) {
+void free_depthwise_conv2d_layer(DepthwiseConv2DLayer *layer) {
+    free_conv2d_layer(&layer->depth_conv);
+    free_conv2d_layer(&layer->point_conv);
+}
+
+Tensor depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor input) {
     Conv2DLayer depth_conv_layer = layer->depth_conv;
     Conv2DLayer point_conv_layer = layer->point_conv;
-    float* mid = conv2d_forward(&depth_conv_layer, input, in_h, in_w);
-    float* out = conv2d_forward(&point_conv_layer, mid, )
+    Tensor mid = conv2d_forward(&depth_conv_layer, input);
+    Tensor out = conv2d_forward(&point_conv_layer, mid);
+    // 销毁中间变量
+    delete_tensor(mid);
+    return out;
 }

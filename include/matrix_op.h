@@ -4,13 +4,21 @@
 // 张量的结构体定义
 typedef struct {
     float* data;
-    int C;
-    int T;
-    int F;
+    int C; // 通道数
+    int T; // 时间维度
+    int F; // 特征维度
 } Tensor;
 
-// 矩阵运算
+// 创建张量
+Tensor create_tensor(int c, int t, int f);
+// 删除张量
+void delete_tensor(Tensor m);
+// 初始化张量数据
+void init_tensor(Tensor* tensor, float* values);
+// 打印张量数据
+void print_tensor(const Tensor* tensor);
 
+// 矩阵运算
 
 // 逐元素加法
 void elementwise_add(float *a, float *b, float *out, int size);

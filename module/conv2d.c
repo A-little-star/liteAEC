@@ -1,3 +1,4 @@
+#include "../include/matrix_op.h"
 #include "../include/conv2d.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +41,8 @@ Conv2DLayer create_conv2d_layer(int in_channels, int out_channels,
 void free_conv2d_layer(Conv2DLayer *layer) {
     free(layer->weights);
     free(layer->bias);
+    layer->weights = NULL;
+    layer->bias = NULL;
 }
 
 // 计算输出的高度和宽度
@@ -49,7 +52,7 @@ void compute_output_size(Conv2DLayer *layer, int in_h, int in_w, int *out_h, int
 }
 
 // 2D 卷积的推理，支持分组卷积
-float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w) {
+Tensor conv2d_forward(Conv2DLayer *layer, Tensor input) {
     int in_channels = layer->in_channels;
     int out_channels = layer->out_channels;
     int kernel_h = layer->kernel_h;
@@ -60,6 +63,13 @@ float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w) {
     int padding_w = layer->padding_w;
     int group = layer->group;
 
+    // 取出输入张量的形状
+    int in_c = input.C, in_h = input.T, in_w = input.F;
+    if (in_c != in_channels) {
+        fprintf(stderr, "Conv2d layer's input channels doesn't match the input tensor's channels.\n");
+        return;
+    };
+
     // 每个组的输入和输出通道数
     int group_in_channels = in_channels / group;
     int group_out_channels = out_channels / group;
@@ -68,19 +78,15 @@ float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w) {
     int out_h, out_w;
     compute_output_size(layer, in_h, in_w, &out_h, &out_w);
 
-    // 为输出分配内存
-    float *output = (float *)malloc(out_h * out_w * out_channels * sizeof(float));
-    if (output == NULL) {
-        fprintf(stderr, "Failed to allocate memory for output\n");
-        return NULL;
-    }
+    // 创建输出向量
+    Tensor output = create_tensor(out_channels, out_h, out_w);
 
     // 初始化输出为偏置
-    memset(output, 0, out_h * out_w * out_channels * sizeof(float));
+    memset(output.data, 0, out_h * out_w * out_channels * sizeof(float));
     for (int oc = 0; oc < out_channels; oc++) {
         for (int oh = 0; oh < out_h; oh++) {
             for (int ow = 0; ow < out_w; ow++) {
-                output[(oc * out_h + oh) * out_w + ow] = layer->bias[oc];
+                output.data[(oc * out_h + oh) * out_w + ow] = layer->bias[oc];
             }
         }
     }
@@ -114,7 +120,7 @@ float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w) {
                                 // 检查边界
                                 if (in_h_index >= 0 && in_h_index < in_h &&
                                     in_w_index >= 0 && in_w_index < in_w) {
-                                    sum += input[(in_channel * in_h + in_h_index) * in_w + in_w_index] *
+                                    sum += input.data[(in_channel * in_h + in_h_index) * in_w + in_w_index] *
                                            layer->weights[((out_channel * group_in_channels + ic) * kernel_h + kh) * kernel_w + kw];
                                 }
                             }
@@ -122,14 +128,97 @@ float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w) {
                     }
 
                     // 将结果存储到输出
-                    output[(out_channel * out_h + oh) * out_w + ow] += sum;
+                    output.data[(out_channel * out_h + oh) * out_w + ow] += sum;
                 }
             }
         }
     }
 
-    // 释放输入空间
-    free(input);
-
     return output;
 }
+
+// 2D 卷积的推理，支持分组卷积
+// float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w) {
+//     int in_channels = layer->in_channels;
+//     int out_channels = layer->out_channels;
+//     int kernel_h = layer->kernel_h;
+//     int kernel_w = layer->kernel_w;
+//     int stride_h = layer->stride_h;
+//     int stride_w = layer->stride_w;
+//     int padding_h = layer->padding_h;
+//     int padding_w = layer->padding_w;
+//     int group = layer->group;
+// 
+//     // 每个组的输入和输出通道数
+//     int group_in_channels = in_channels / group;
+//     int group_out_channels = out_channels / group;
+// 
+//     // 计算输出的高度和宽度
+//     int out_h, out_w;
+//     compute_output_size(layer, in_h, in_w, &out_h, &out_w);
+// 
+//     // 为输出分配内存
+//     float *output = (float *)malloc(out_h * out_w * out_channels * sizeof(float));
+//     if (output == NULL) {
+//         fprintf(stderr, "Failed to allocate memory for output\n");
+//         return NULL;
+//     }
+// 
+//     // 初始化输出为偏置
+//     memset(output, 0, out_h * out_w * out_channels * sizeof(float));
+//     for (int oc = 0; oc < out_channels; oc++) {
+//         for (int oh = 0; oh < out_h; oh++) {
+//             for (int ow = 0; ow < out_w; ow++) {
+//                 output[(oc * out_h + oh) * out_w + ow] = layer->bias[oc];
+//             }
+//         }
+//     }
+// 
+//     // 遍历每个组
+//     for (int g = 0; g < group; g++) {
+//         // 计算该组的输入和输出通道范围
+//         int in_offset = g * group_in_channels;
+//         int out_offset = g * group_out_channels;
+// 
+//         // 遍历该组的输出通道
+//         for (int oc = 0; oc < group_out_channels; oc++) {
+//             int out_channel = out_offset + oc;
+// 
+//             // 遍历输出高度
+//             for (int oh = 0; oh < out_h; oh++) {
+//                 // 遍历输出宽度
+//                 for (int ow = 0; ow < out_w; ow++) {
+//                     float sum = 0.0f;
+// 
+//                     // 遍历输入通道
+//                     for (int ic = 0; ic < group_in_channels; ic++) {
+//                         int in_channel = in_offset + ic;
+// 
+//                         // 遍历卷积核
+//                         for (int kh = 0; kh < kernel_h; kh++) {
+//                             for (int kw = 0; kw < kernel_w; kw++) {
+//                                 int in_h_index = oh * stride_h + kh - padding_h;
+//                                 int in_w_index = ow * stride_w + kw - padding_w;
+// 
+//                                 // 检查边界
+//                                 if (in_h_index >= 0 && in_h_index < in_h &&
+//                                     in_w_index >= 0 && in_w_index < in_w) {
+//                                     sum += input[(in_channel * in_h + in_h_index) * in_w + in_w_index] *
+//                                            layer->weights[((out_channel * group_in_channels + ic) * kernel_h + kh) * kernel_w + kw];
+//                                 }
+//                             }
+//                         }
+//                     }
+// 
+//                     // 将结果存储到输出
+//                     output[(out_channel * out_h + oh) * out_w + ow] += sum;
+//                 }
+//             }
+//         }
+//     }
+// 
+//     // 释放输入空间
+//     free(input);
+// 
+//     return output;
+// }
