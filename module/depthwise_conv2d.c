@@ -35,8 +35,9 @@ DepthwiseConv2DLayer create_depthwise_conv2d_layer(int in_channels, int out_chan
     return layer;
 };
 
-void depthwise_conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w,
-                    float *output, int out_h, int out_w) {
-    
-
+void depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, float *input, int in_h, int in_w) {
+    Conv2DLayer depth_conv_layer = layer->depth_conv;
+    Conv2DLayer point_conv_layer = layer->point_conv;
+    float* mid = conv2d_forward(&depth_conv_layer, input, in_h, in_w);
+    float* out = conv2d_forward(&point_conv_layer, mid, )
 }

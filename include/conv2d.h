@@ -23,7 +23,7 @@ Conv2DLayer create_conv2d_layer(int in_channels, int out_channels,
                                 int group);
 
 // 执行卷积操作
-void conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w, float *output);
+float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w);
 
 // 释放内存
 void free_conv2d_layer(Conv2DLayer *layer);

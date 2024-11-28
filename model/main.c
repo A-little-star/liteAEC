@@ -32,7 +32,7 @@ int main() {
     float output[2 * out_h * out_w]; // 2 是 out_channels
 
     // 执行卷积
-    conv2d_forward(&conv_layer, input, in_h, in_w, output, out_h, out_w);
+    conv2d_forward(&conv_layer, input, in_h, in_w, output);
 
     // 打印输出结果
     printf("Output:\n");

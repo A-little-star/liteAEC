@@ -49,7 +49,7 @@ void compute_output_size(Conv2DLayer *layer, int in_h, int in_w, int *out_h, int
 }
 
 // 2D 卷积的推理，支持分组卷积
-void conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w, float *output) {
+float* conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w) {
     int in_channels = layer->in_channels;
     int out_channels = layer->out_channels;
     int kernel_h = layer->kernel_h;
@@ -67,6 +67,13 @@ void conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w, float 
     // 计算输出的高度和宽度
     int out_h, out_w;
     compute_output_size(layer, in_h, in_w, &out_h, &out_w);
+
+    // 为输出分配内存
+    float *output = (float *)malloc(out_h * out_w * out_channels * sizeof(float));
+    if (output == NULL) {
+        fprintf(stderr, "Failed to allocate memory for output\n");
+        return NULL;
+    }
 
     // 初始化输出为偏置
     memset(output, 0, out_h * out_w * out_channels * sizeof(float));
@@ -120,4 +127,9 @@ void conv2d_forward(Conv2DLayer *layer, float *input, int in_h, int in_w, float 
             }
         }
     }
+
+    // 释放输入空间
+    free(input);
+
+    return output;
 }

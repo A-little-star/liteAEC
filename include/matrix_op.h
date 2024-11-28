@@ -1,6 +1,16 @@
 #ifndef MATRIX_OP_H
 #define MATRIX_OP_H
+
+// 张量的结构体定义
+typedef struct {
+    float* data;
+    int C;
+    int T;
+    int F;
+} Tensor;
+
 // 矩阵运算
+
 
 // 逐元素加法
 void elementwise_add(float *a, float *b, float *out, int size);
