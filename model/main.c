@@ -31,6 +31,7 @@ int main() {
     int num_samples;                        // 样本数
     int sample_rate;                        // 采样率
     float *audio_data = read_wav_file(filename, &num_samples, &sample_rate);
+    wav_norm(audio_data, num_samples);
 
     Tensor input_wav = create_tensor(1, num_samples, 1);
     init_tensor(&input_wav, audio_data);

@@ -89,6 +89,11 @@ float* read_wav_file(const char *filename, int *num_samples, int *sample_rate) {
     return audio_data;
 }
 
+void wav_norm(float* audio_data, int num_samples) {
+    for (int i = 0; i < num_samples; i ++ )
+        audio_data[i] *= 32768;
+}
+
 // int main() {
 //     const char *filename = "example.wav"; // 替换为实际文件名
 //     read_wav_file(filename);
