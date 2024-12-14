@@ -2,25 +2,27 @@
 #define MATRIX_OP_H
 
 // 张量的结构体定义
+// 目前只支持float32类型
 typedef struct {
-    float* data;
-    int C; // 通道数
-    int T; // 时间维度
-    int F; // 特征维度
+    float* data;            // 存储数据的指针
+    int* shape;             // 形状数组
+    int ndim;               // Tensor的维度
+    int size;               // Tensor的总元素个数
 } Tensor;
 
 // 创建张量
-Tensor create_tensor(int c, int t, int f);
+// Tensor create_tensor(int c, int t, int f);
+Tensor* create_tensor(int* shape, int ndim);
 // 删除张量
 void delete_tensor(Tensor *tensor);
 // 初始化张量数据
 void init_tensor(Tensor* tensor, float* values);
 // 打印张量数据
 void print_tensor(const Tensor* tensor);
-// 将索引为[c_idx, t_idx, f_idx]的元素的值设为value
-void set_value(Tensor *tensor, int c_idx, int t_idx, int f_idx, float value);
-// 获取索引为[c_idx, t_idx, f_idx]的元素的值
-float get_value(Tensor *tensor, int c_idx, int t_idx, int f_idx);
+// 修改Tensor某位置的值
+void tensor_set(Tensor* tensor, const int* indices, float value);
+// 获取Tensor某位置的值
+float tensor_get(const Tensor* tensor, const int* indices);
 
 // 矩阵运算
 

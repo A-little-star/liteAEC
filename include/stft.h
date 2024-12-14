@@ -2,6 +2,6 @@
 #define STFT_H
 #include "matrix_op.h"
 
-void stft(Tensor* input, Tensor* cspecs, Tensor* features);
+void feature_extract(Tensor* input, Tensor* cspecs, Tensor* features);
 
 #endif

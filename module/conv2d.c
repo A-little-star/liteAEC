@@ -3,38 +3,58 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 // 创建卷积层
-Conv2DLayer create_conv2d_layer(int in_channels, int out_channels,
+Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
                                  int kernel_h, int kernel_w,
                                  int stride_h, int stride_w,
                                  int padding_h, int padding_w,
                                  int group) {
-    Conv2DLayer layer;
-    layer.in_channels = in_channels;
-    layer.out_channels = out_channels;
-    layer.kernel_h = kernel_h;
-    layer.kernel_w = kernel_w;
-    layer.stride_h = stride_h;
-    layer.stride_w = stride_w;
-    layer.padding_h = padding_h;
-    layer.padding_w = padding_w;
-    layer.group = group;
+    Conv2DLayer* layer;
+    layer->in_channels = in_channels;
+    layer->out_channels = out_channels;
+    layer->kernel_h = kernel_h;
+    layer->kernel_w = kernel_w;
+    layer->stride_h = stride_h;
+    layer->stride_w = stride_w;
+    layer->padding_h = padding_h;
+    layer->padding_w = padding_w;
+    layer->group = group;
 
     // 分配权重和偏置的内存
     int weight_size = out_channels * in_channels * kernel_h * kernel_w / group;
-    layer.weights = (float *)malloc(weight_size * sizeof(float));
-    layer.bias = (float *)malloc(out_channels * sizeof(float));
+    layer->weights = (float *)malloc(weight_size * sizeof(float));
+    layer->bias = (float *)malloc(out_channels * sizeof(float));
 
     // 初始化权重和偏置为随机值
     for (int i = 0; i < weight_size; i++) {
-        layer.weights[i] = (float)1.0f; // 初始化为1.0
+        layer->weights[i] = (float)1.0f; // 初始化为1.0
     }
     for (int i = 0; i < out_channels; i++) {
-        layer.bias[i] = (float)0.0f;  // 偏置初始化为0
+        layer->bias[i] = (float)0.0f;  // 偏置初始化为0
     }
 
     return layer;
+}
+
+// 加载卷积层参数
+void conv2d_load_params(Conv2DLayer* layer, float* weight, float* bias) {
+    int in_channels = layer->in_channels;
+    int out_channels = layer->out_channels;
+    int kernel_h = layer->kernel_h;
+    int kernel_w = layer->kernel_w;
+    int group = layer->group;
+
+    int weight_size = out_channels * in_channels * kernel_h * kernel_w / group;
+
+    // 初始化权重和偏置为随机值
+    for (int i = 0; i < weight_size; i++) {
+        layer->weights[i] = weight[i]; // 初始化为1.0
+    }
+    for (int i = 0; i < out_channels; i++) {
+        layer->bias[i] = bias[i];  // 偏置初始化为0
+    }
 }
 
 // 释放卷积层的内存
@@ -52,7 +72,8 @@ void compute_output_size(Conv2DLayer *layer, int in_h, int in_w, int *out_h, int
 }
 
 // 2D 卷积的推理，支持分组卷积
-Tensor conv2d_forward(Conv2DLayer *layer, Tensor input) {
+Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input) {
+    assert(input->ndim == 3);
     int in_channels = layer->in_channels;
     int out_channels = layer->out_channels;
     int kernel_h = layer->kernel_h;
@@ -64,7 +85,7 @@ Tensor conv2d_forward(Conv2DLayer *layer, Tensor input) {
     int group = layer->group;
 
     // 取出输入张量的形状
-    int in_c = input.C, in_h = input.T, in_w = input.F;
+    int in_c = input->shape[0], in_h = input->shape[1], in_w = input->shape[2];
     if (in_c != in_channels) {
         fprintf(stderr, "Conv2d layer's input channels doesn't match the input tensor's channels.\n");
         return;
@@ -79,14 +100,15 @@ Tensor conv2d_forward(Conv2DLayer *layer, Tensor input) {
     compute_output_size(layer, in_h, in_w, &out_h, &out_w);
 
     // 创建输出向量
-    Tensor output = create_tensor(out_channels, out_h, out_w);
+    Tensor* output = create_tensor((int[]){out_channels, out_h, out_w}, 3);
+    // Tensor output = create_tensor(out_channels, out_h, out_w);
 
     // 初始化输出为偏置
-    memset(output.data, 0, out_h * out_w * out_channels * sizeof(float));
+    memset(output->data, 0, out_h * out_w * out_channels * sizeof(float));
     for (int oc = 0; oc < out_channels; oc++) {
         for (int oh = 0; oh < out_h; oh++) {
             for (int ow = 0; ow < out_w; ow++) {
-                output.data[(oc * out_h + oh) * out_w + ow] = layer->bias[oc];
+                output->data[(oc * out_h + oh) * out_w + ow] = layer->bias[oc];
             }
         }
     }
@@ -120,7 +142,7 @@ Tensor conv2d_forward(Conv2DLayer *layer, Tensor input) {
                                 // 检查边界
                                 if (in_h_index >= 0 && in_h_index < in_h &&
                                     in_w_index >= 0 && in_w_index < in_w) {
-                                    sum += input.data[(in_channel * in_h + in_h_index) * in_w + in_w_index] *
+                                    sum += input->data[(in_channel * in_h + in_h_index) * in_w + in_w_index] *
                                            layer->weights[((out_channel * group_in_channels + ic) * kernel_h + kh) * kernel_w + kw];
                                 }
                             }
@@ -128,7 +150,7 @@ Tensor conv2d_forward(Conv2DLayer *layer, Tensor input) {
                     }
 
                     // 将结果存储到输出
-                    output.data[(out_channel * out_h + oh) * out_w + ow] += sum;
+                    output->data[(out_channel * out_h + oh) * out_w + ow] += sum;
                 }
             }
         }

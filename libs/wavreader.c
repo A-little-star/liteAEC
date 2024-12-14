@@ -89,6 +89,69 @@ float* read_wav_file(const char *filename, int *num_samples, int *sample_rate) {
     return audio_data;
 }
 
+// 写入 WAV 文件
+int write_wav_file(const char *filename, const float *audio_data, int num_samples, int sample_rate, int num_channels, int bits_per_sample) {
+    // 打开文件
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        perror("Error opening file");
+        return -1;
+    }
+
+    // 准备 WAV 文件头
+    WAVHeader header;
+    memcpy(header.chunkID, "RIFF", 4);
+    memcpy(header.format, "WAVE", 4);
+    memcpy(header.subchunk1ID, "fmt ", 4);
+    header.subchunk1Size = 16; // PCM 固定为 16
+    header.audioFormat = 1; // PCM 格式
+    header.numChannels = num_channels;
+    header.sampleRate = sample_rate;
+    header.bitsPerSample = bits_per_sample;
+    header.blockAlign = (num_channels * bits_per_sample) / 8;
+    header.byteRate = header.sampleRate * header.blockAlign;
+    header.subchunk2Size = num_samples * header.blockAlign;
+    header.chunkSize = 4 + (8 + header.subchunk1Size) + (8 + header.subchunk2Size);
+    memcpy(header.subchunk2ID, "data", 4);
+
+    // 写入文件头
+    fwrite(&header, sizeof(WAVHeader), 1, file);
+
+    // 写入音频数据
+    if (bits_per_sample == 16) {
+        int16_t *buffer = (int16_t *)malloc(num_samples * sizeof(int16_t));
+        if (!buffer) {
+            fprintf(stderr, "Memory allocation failed\n");
+            fclose(file);
+            return -1;
+        }
+        for (int i = 0; i < num_samples; i++) {
+            buffer[i] = (int16_t)(audio_data[i] * 32768.0f); // 将浮点数据转换为 16 位整数
+        }
+        fwrite(buffer, sizeof(int16_t), num_samples, file);
+        free(buffer);
+    } else if (bits_per_sample == 8) {
+        uint8_t *buffer = (uint8_t *)malloc(num_samples * sizeof(uint8_t));
+        if (!buffer) {
+            fprintf(stderr, "Memory allocation failed\n");
+            fclose(file);
+            return -1;
+        }
+        for (int i = 0; i < num_samples; i++) {
+            buffer[i] = (uint8_t)((audio_data[i] * 128.0f) + 128); // 将浮点数据转换为 8 位整数
+        }
+        fwrite(buffer, sizeof(uint8_t), num_samples, file);
+        free(buffer);
+    } else {
+        fprintf(stderr, "Unsupported bits per sample: %d\n", bits_per_sample);
+        fclose(file);
+        return -1;
+    }
+
+    fclose(file);
+    return 0;
+}
+
 void wav_norm(float* audio_data, int num_samples) {
     for (int i = 0; i < num_samples; i ++ )
         audio_data[i] *= 32768;

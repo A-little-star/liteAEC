@@ -17,14 +17,14 @@ typedef struct {
 } Conv2DLayer;
 
 // 创建卷积层
-Conv2DLayer create_conv2d_layer(int in_channels, int out_channels,
+Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
                                 int kernel_h, int kernel_w,
                                 int stride_h, int stride_w,
                                 int padding_h, int padding_w,
                                 int group);
 
 // 执行卷积操作
-Tensor conv2d_forward(Conv2DLayer *layer, Tensor input);
+Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input);
 
 // 释放内存
 void free_conv2d_layer(Conv2DLayer *layer);

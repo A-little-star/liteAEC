@@ -10,17 +10,17 @@ typedef struct {
     int stride_h, stride_w; // 步幅
     int padding_h, padding_w; // 填充
 
-    Conv2DLayer depth_conv;
-    Conv2DLayer point_conv;
+    Conv2DLayer* depth_conv;
+    Conv2DLayer* point_conv;
 } DepthwiseConv2DLayer;
 
-DepthwiseConv2DLayer create_depthwise_conv2d_layer(int in_channels, int out_channels,
+DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_channels,
                                 int kernel_h, int kernel_w,
                                 int stride_h, int stride_w,
                                 int padding_h, int padding_w);
 
 void free_depthwise_conv2d_layer(DepthwiseConv2DLayer *layer);
 
-Tensor depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor input);
+Tensor* depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor *input);
 
 #endif

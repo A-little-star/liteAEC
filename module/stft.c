@@ -83,16 +83,12 @@ static void apply_window(float *x) {
   }
 }
 
-void stft(Tensor* input, Tensor* cspecs, Tensor* features) {
-  int channel = input->C, length = input->T, dim = input->F;
-  assert((channel == 1) && (dim == 1));
+void feature_extract(Tensor* input, Tensor* cspecs, Tensor* features) {
+  assert(input->ndim == 1);
+  int length = input->size;
 
   int win_len = WINDOW_SIZE;
   int hop_len = FRAME_SIZE;
-  int fft_len = FFT_LEN;
-
-  int num_frame = length / hop_len;
-  // Tensor cspecs = create_tensor(2, num_frame, FREQ_SIZE);  // 复数谱 [2, T, F]
 
   DenoiseState *noisy;
   noisy = rnnoise_create();
@@ -112,15 +108,19 @@ void stft(Tensor* input, Tensor* cspecs, Tensor* features) {
     
     forward_transform(X, x);
 
-    int silence = compute_frame_features(noisy, X, Ex, feature);
+    compute_frame_features(noisy, X, Ex, feature);
 
     // 这里使用memcpy会更快一些，为了方便调试，先使用赋值的方法
     for (int i = 0; i < FREQ_SIZE; i ++ ) {
-      set_value(cspecs, 0, num_frame, i, (float)X[i].r);
-      set_value(cspecs, 1, num_frame, i, X[i].i);
+
+      tensor_set(cspecs, (int[]){0, num_frame, i}, X[i].r);
+      tensor_set(cspecs, (int[]){1, num_frame, i}, X[i].i);
+      // set_value(cspecs, 0, num_frame, i, (float)X[i].r);
+      // set_value(cspecs, 1, num_frame, i, X[i].i);
     }
     for (int i = 0; i < NB_FEATURES; i ++ ) {
-      set_value(features, 0, num_frame, i, feature[i]);
+      tensor_set(features, (int[]){0, num_frame, i}, feature[i]);
+      // set_value(features, 0, num_frame, i, feature[i]);
     }
   }
   return;
