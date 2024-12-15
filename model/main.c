@@ -1,4 +1,4 @@
-#include "../include/matrix_op.h"
+#include "../include/tensor.h"
 #include "../include/gru.h"
 #include "../include/conv2d.h"
 #include "../include/elu.h"
@@ -8,6 +8,7 @@
 #include "../include/stft.h"
 #include "../include/typedef.h"
 #include "../include/pfdkf.h"
+#include "../include/parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -31,94 +32,131 @@
 // }
 
 // 测试线性滤波
-int main() {
-    // Example usage of PFDKF
-    const char *filename_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
-    const char *filename_ref = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav";
-    const char *filename_e = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/e.wav";
-    const char *filename_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/y.wav";
-    int num_samples;                        // 样本数
-    int sample_rate;                        // 采样率
-    float *mic = read_wav_file(filename_mic, &num_samples, &sample_rate);
-    float *ref = read_wav_file(filename_ref, &num_samples, &sample_rate);
-
-    float *e = (float*)calloc(num_samples, sizeof(float));
-    float *y = (float*)calloc(num_samples, sizeof(float));
-    pfdkf(ref, mic, e, y, num_samples);
-
-    if (write_wav_file(filename_e, e, num_samples, sample_rate, 1, 16) == 0) {
-        printf("e WAV file written successfully.\n");
-    } else {
-        printf("Failed to write WAV file.\n");
-    }
-    if (write_wav_file(filename_y, y, num_samples, sample_rate, 1, 16) == 0) {
-        printf("y WAV file written successfully.\n");
-    } else {
-        printf("Failed to write WAV file.\n");
-    }
-
-    // const char *output_file = "./test_txt/e_c.txt"; // 输出文件名
-
-    // FILE *file = fopen(output_file, "w");
-    // if (!file) {
-    //     perror("Error opening output file");
-    //     free(ref);
-    //     return 1;
-    // }
-
-    // for (int t = 0; t < num_samples; t ++ ) {
-    //     fprintf(file, "%f ", ref[t]);
-    //     if (t % 100 == 99)
-    //         fprintf(file, "\n");
-    // }
-
-    // fclose(file); // 关闭文件
-
-    return 0;
-}
-
-// 测试整个模型
 // int main() {
-//     const char *filename = "example.wav";    // 替换为实际文件名
-//     const char *output_file = "features.txt"; // 输出文件名
+//     // Example usage of PFDKF
+//     const char *filename_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
+//     const char *filename_ref = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav";
+//     const char *filename_e = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/e.wav";
+//     const char *filename_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/y.wav";
 //     int num_samples;                        // 样本数
 //     int sample_rate;                        // 采样率
-//     float *audio_data = read_wav_file(filename, &num_samples, &sample_rate);
-//     wav_norm(audio_data, num_samples);
+//     float *mic = read_wav_file(filename_mic, &num_samples, &sample_rate);
+//     float *ref = read_wav_file(filename_ref, &num_samples, &sample_rate);
 
-//     Tensor* input_wav = create_tensor((int[]){num_samples}, 1);
-//     init_tensor(input_wav, audio_data);
+//     float *e = (float*)calloc(num_samples, sizeof(float));
+//     float *y = (float*)calloc(num_samples, sizeof(float));
+//     pfdkf(ref, mic, e, y, num_samples);
 
-//     int length = num_samples / FRAME_SIZE;
-//     Tensor* cspecs = create_tensor((int[]){2, length, FREQ_SIZE}, 3);
-//     Tensor* features = create_tensor((int[]){1, length, NB_FEATURES}, 3);
-//     // Tensor cspecs = create_tensor(2, length, FREQ_SIZE);
-//     // Tensor features = create_tensor(1, length, NB_FEATURES);
-//     feature_extract(input_wav, cspecs, features);
-
-//     // DepthwiseConv2DLayer encoder_0 = create_depthwise_conv2d_layer();
-
-//     FILE *file = fopen(output_file, "w");
-//     if (!file) {
-//         perror("Error opening output file");
-//         free(audio_data);
-//         return 1;
+//     if (write_wav_file(filename_e, e, num_samples, sample_rate, 1, 16) == 0) {
+//         printf("e WAV file written successfully.\n");
+//     } else {
+//         printf("Failed to write WAV file.\n");
 //     }
-
-//     int T = features->shape[1], F = features->shape[2];
-//     for (int t = 0; t < T; t ++ ) {
-//         for (int f = 0; f < F; f ++ ) {
-//             float tfbin = tensor_get(features, (int[]){0, t, f});
-//             // float tfbin = get_value(&features, 0, t, f);
-//             fprintf(file, "%f ", tfbin);
-//         }
-//         fprintf(file, "\n");
+//     if (write_wav_file(filename_y, y, num_samples, sample_rate, 1, 16) == 0) {
+//         printf("y WAV file written successfully.\n");
+//     } else {
+//         printf("Failed to write WAV file.\n");
 //     }
-
-//     fclose(file); // 关闭文件
 
 //     return 0;
 // }
+
+// 测试加载参数
+// int main() {
+//     const char *filename = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/test_dict.txt";
+//     Parameter *params = (Parameter*)malloc(MAX_PARAMS * sizeof(Parameter));
+//     parse_ckpt(filename, params);
+//     return EXIT_SUCCESS;
+// }
+
+// 测试整个模型
+int main() {
+    // *** stage 1: 读取文件 ***
+    const char *filename_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
+    const char *filename_ref = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav";
+    const char *filename_e = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/e.wav";
+    const char *filename_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/hello.wav";
+    int num_samples;                        // 样本数
+    int sample_rate;                        // 采样率
+    float *mic_ = read_wav_file(filename_mic, &num_samples, &sample_rate);
+    float *ref_ = read_wav_file(filename_ref, &num_samples, &sample_rate);
+
+    float *e_ = (float*)calloc(num_samples, sizeof(float));
+    float *y_ = (float*)calloc(num_samples, sizeof(float));
+
+    printf("stage 1 executed successfully.\n");
+
+    // *** stage 2: 线性滤波与特征提取 ***
+    // pfdkf(ref_, mic_, e_, y_, num_samples);
+
+    wav_norm(mic_, num_samples);
+    wav_norm(ref_, num_samples);
+    wav_norm(e_, num_samples);
+    wav_norm(y_, num_samples);
+
+    Tensor *mic = create_tensor((int[]){num_samples}, 1);
+    Tensor *y = create_tensor((int[]){num_samples}, 1);
+    init_tensor(mic, mic_);
+    init_tensor(y, y_);
+
+    int length = num_samples / FRAME_SIZE;
+    Tensor* cspecs_mic = create_tensor((int[]){2, length, FREQ_SIZE}, 3);
+    Tensor* cspecs_y = create_tensor((int[]){2, length, FREQ_SIZE}, 3);
+    Tensor* features_mic = create_tensor((int[]){1, length, NB_FEATURES}, 3);
+    Tensor* features_y = create_tensor((int[]){1, length, NB_FEATURES}, 3);
+    feature_extract(mic, cspecs_mic, features_mic);
+    feature_extract(y, cspecs_y, features_y);
+
+    printf("stage 2 executed successfully.\n");
+
+    // *** stage 3: 读取模型参数并解析 ***
+    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/test_dict.txt";
+    ModelStateDict *sd = create_model_state_dict();
+    parse_ckpt(cpt, sd);
+
+    printf("stage 3 executed successfully.\n");
+
+    // *** stage 4: 构建模型并加载模型参数 ***
+    DepthwiseConv2DLayer *conv2d = create_depthwise_conv2d_layer(1, 8, 4, 3, 1, 2, 3, 0);
+    Parameter *params = sd->params;
+    conv2d_load_params(conv2d->depth_conv, params[0].values, params[1].values);
+    // conv2d_load_params(conv2d->point_conv, params[2].values, params[3].values);
+
+    free_model_state_dict(sd);
+
+    printf("stage 4 executed successfully.\n");
+
+    // *** stage 5: 模型推理 ***
+    Tensor *outputs = depthwise_conv2d_forward(conv2d, features_mic);
+    print_tensor_shape(outputs);
+
+    // const char *output_file_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_mic.txt";
+    // const char *output_file_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_y.txt";
+    // FILE *file = fopen(output_file_mic, "w");
+    // FILE *file_y = fopen(output_file_y, "w");
+    // if (!file) {
+    //     perror("Error opening output file");
+    //     return 1;
+    // }
+
+    // int T = features_mic->shape[1], F = features_mic->shape[2];
+    // for (int t = 0; t < T; t ++ ) {
+    //     for (int f = 0; f < F; f ++ ) {
+    //         float tfbin = tensor_get(features_mic, (int[]){0, t, f});
+    //         float tfbin_y = tensor_get(features_y, (int[]){0, t, f});
+    //         // float tfbin = get_value(&features, 0, t, f);
+    //         fprintf(file, "%f ", tfbin);
+    //         fprintf(file_y, "%f ", tfbin_y);
+    //     }
+    //     fprintf(file, "\n");
+    //     fprintf(file_y, "\n");
+    // }
+
+    // fclose(file); // 关闭文件
+    // fclose(file_y);
+
+    return 0;
+}
 
 // 测试卷积模块
 // int main() {

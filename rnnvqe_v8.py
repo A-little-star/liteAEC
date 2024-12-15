@@ -11,10 +11,7 @@ import einops
 from einops.layers.torch import Rearrange
 from functools import partial
 
-from tfilm import Frequency_FiLM
-
 from pyrnnoise.rnnoise_module import RnnoiseModule
-from nnet.norm import new_norm
 
 class DepthwiseConv2d(nn.Module):
     def __init__(self,
@@ -313,85 +310,44 @@ class DeepVQES(nn.Module):
         }
 
 def test_model():
-    model = DeepVQES(in_dim=112, out_dim=100)
-
-    cnn_params = 0
-    for layer in model.mic_encoders:
-        cnn_params += sum([param.nelement() for param in layer.parameters()])
-    for layer in model.ref_encoders:
-        cnn_params += sum([param.nelement() for param in layer.parameters()])
-    for layer in model.decoders:
-        cnn_params += sum([param.nelement() for param in layer.parameters()])
-    cnn_params = cnn_params / 10.0**3
-
-    rnn_params = sum([param.nelement() for param in model.bottleneck.parameters()]) / 10.0**3
-
-    fc_params = sum([param.nelement() for param in model.fc.parameters()]) / 10.0**3
-
-    print(f'#cnn_param: {cnn_params}K')
-    print(f'#rnn_param: {rnn_params}K')
-    print(f'#fc_params: {fc_params}K')
-
-    num_params = sum(
-        [param.nelement() for param in model.parameters()]) / 10.0**3
-    print(f"#param: {num_params}K")
-
-    import torch as th
-
-    from thop import profile
-    input_feature = (th.randn(1, 16000), torch.randn(1, 16000))
-    flops,params = profile(model,inputs=input_feature)
-    print(flops / 10.0**6)
-
-
-    # device = th.device("cpu")
-    device = th.device("cpu")
-    model = model.cpu() if device == th.device("cpu") else model.cuda()
-
-    inputs = th.randn(1, 16000)
-    outputs = model(inputs, inputs)
-    print(f'gains shape: {outputs["gains"].shape}')
-    print(f'specs shape: {outputs["specs"].shape}')
-    print(f'wavs shape: {outputs["wavs"].shape}')
-    # print(outputs[0, 50, :])
-
-def test_gains():
     import soundfile as sf
-    from linear_model.pfdkf_zsm import pfdkf
+    from pfdkf_zsm import pfdkf
     model = DeepVQES(in_dim=112, out_dim=100, casual=True, bidirectional=False)
-    model.eval()
+    mic, sr = sf.read("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav")
+    ref, sr = sf.read("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav")
+    e, y = pfdkf(ref, mic)
+    # 输出文件路径
+    output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/y_py.txt"
 
-    cpt = torch.load("/home/node25_tmpdata/xcli/percepnet/train/exp/rnnvqe_v8_2/8.pt.tar", map_location="cpu")
+    sf.write("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/y__py.wav", y, 48000)
 
-    state_dict = cpt['model_state_dict']
-    # 去掉 'module.' 前缀
-    new_state_dict = {}
-    for key, value in state_dict.items():
-        # 只去掉 'module.' 前缀，但保留 'rnnoise_module.' 前缀中的 'module'
-        if key.startswith('module.') and not key.startswith('rnnoise_module.'):
-            new_key = key.replace('module.', '', 1)  # 只替换第一个 'module.'
-        else:
-            new_key = key  # 如果不符合条件则不修改
-        new_state_dict[new_key] = value
-
-    model.load_state_dict(new_state_dict)
-
-    mic, sr = sf.read("/home/node25_tmpdata/data/icassp2023_blind_test_set/doubletalk/0CI8zRqd2U609L9H09qWrA_doubletalk_mic.wav")
-    far, sr = sf.read("/home/node25_tmpdata/data/icassp2023_blind_test_set/doubletalk/0CI8zRqd2U609L9H09qWrA_doubletalk_lpb.wav")
-    laec_outputs, laec_echo = pfdkf(far, mic)
-    min_len = min(laec_outputs.shape[0], far.shape[0])
-    mic = mic[:min_len]
-    laec_outputs = laec_outputs[:min_len]
-    laec_echo = laec_echo[:min_len]
-    far = far[:min_len]
-
+    # 将 Tensor 写入文件，每 50 个元素一行
+    with open(output_file, "w") as f:
+        for i in range(0, len(y), 50):  # 按步长 50 遍历
+            # 取出当前行的元素
+            row = y[i:i+50]
+            # 格式化为字符串并写入文件
+            formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+            f.write(formatted_row + "\n")
     mic = torch.from_numpy(mic).unsqueeze(0)
-    far = torch.from_numpy(far).unsqueeze(0)
-    laec_outputs = torch.from_numpy(laec_outputs).unsqueeze(0)
-    laec_echo = torch.from_numpy(laec_echo).unsqueeze(0)
+    y = torch.from_numpy(y).unsqueeze(0)
+    rnnoise_module = RnnoiseModule(n_fft=512, hop_len=256, win_len=512, up_scale=64.0, nfilter=100)
+    features_mic = rnnoise_module.forward_transform(mic).squeeze(0).squeeze(0)
+    features_y = rnnoise_module.forward_transform(y).squeeze(0).squeeze(0)
+    print(features_mic.shape)
+    output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_mic_py.txt"
+    output_file_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_y_py.txt"
+    with open(output_file, "w") as f:
+        for row in features_mic:
+            formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+            f.write(formatted_row + "\n")
+    with open(output_file_y, "w") as f:
+        for row in features_y:
+            formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+            f.write(formatted_row + "\n")
 
-    outputs = model(mic, laec_echo)
-    print(outputs["gains"])
+    print(f"Tensor has been written to {output_file}.")
+
 
 if __name__ == "__main__":
-    test_gains()
+    test_model()

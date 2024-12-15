@@ -72,10 +72,6 @@ typedef struct {
     kiss_fft_scalar r;
     kiss_fft_scalar i;
 }kiss_fft_cpx;
-// typedef struct {
-//     double r;
-//     double i;
-// }kiss_fft_cpx;
 
 typedef struct {
    kiss_twiddle_scalar r;

@@ -5,9 +5,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-int debug = 0;
-int idx = 3;
-
 void fft(kiss_fft_cpx *out, const float *in, int fft_len) {
     // 这个fft和python中各种fft差一个fft_len的倍数，这里给结果乘上fft_len和python对齐
     kiss_fft_cpx x[fft_len];
@@ -278,7 +275,6 @@ void pfdkf(const float *x, const float *d, float *e_out, float *y_out, int wav_l
     float *e_n = (float*)malloc(M * sizeof(float));
     float *y_n = (float*)malloc(M * sizeof(float));
     for (int i = 0; i < num_block; i ++ ) {
-        debug ++;
         filt(filter, x + i * M, d + i * M, e_n, y_n);
         update(filter);
         for (int j = 0; j < M; j ++ ) {

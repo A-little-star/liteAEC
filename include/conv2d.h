@@ -1,6 +1,6 @@
 #ifndef CONV2D_H
 #define CONV2D_H
-#include "matrix_op.h"
+#include "tensor.h"
 
 // 定义卷积层的结构体（包括权重、偏置等参数）
 typedef struct {
@@ -25,6 +25,8 @@ Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
 
 // 执行卷积操作
 Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input);
+
+void conv2d_load_params(Conv2DLayer* layer, float* weight, float* bias);
 
 // 释放内存
 void free_conv2d_layer(Conv2DLayer *layer);
