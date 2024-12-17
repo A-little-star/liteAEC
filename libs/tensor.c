@@ -61,6 +61,10 @@ void print_tensor_recursive(const Tensor* tensor, int depth, int offset) {
         return;
     }
 
+    int depth_size = 1;
+    for (int i = 0; i <= depth; i ++ )
+        depth_size *= tensor->shape[i];
+
     // 打印当前维度
     printf("[");
     for (int i = 0; i < tensor->shape[depth]; ++i) {
@@ -68,7 +72,7 @@ void print_tensor_recursive(const Tensor* tensor, int depth, int offset) {
             printf(", ");
         }
         // 递归打印下一维度
-        print_tensor_recursive(tensor, depth + 1, offset + i * (tensor->size / tensor->shape[depth]));
+        print_tensor_recursive(tensor, depth + 1, offset + i * (tensor->size / depth_size));
     }
     printf("]");
 }
@@ -132,6 +136,77 @@ float tensor_get(const Tensor* tensor, const int* indices) {
         return 0.0f;  // 出错返回默认值
     }
     return tensor->data[offset];
+}
+
+// 获取切片后的Tensor
+Tensor* tensor_slice(Tensor* tensor, int* start_indices, int* end_indices) {
+    // 创建一个新的Tensor来存储切片结果
+    Tensor* slice = (Tensor*)malloc(sizeof(Tensor));
+    slice->ndim = tensor->ndim;
+    slice->shape = (int*)malloc(slice->ndim * sizeof(int));
+    
+    int size = 1;
+    for (int i = 0; i < slice->ndim; i++) {
+        slice->shape[i] = end_indices[i] - start_indices[i];
+        size *= slice->shape[i];
+    }
+    
+    slice->size = size;
+    slice->data = (float*)malloc(size * sizeof(float));
+    
+    // 复制切片数据
+    int* indices = (int*)malloc(slice->ndim * sizeof(int));
+    int offset = 0;
+    for (int i = 0; i < size; i++) {
+        // 计算当前索引
+        int temp_offset = i;
+        for (int j = slice->ndim - 1; j >= 0; j--) {
+            indices[j] = temp_offset % slice->shape[j] + start_indices[j];
+            temp_offset /= slice->shape[j];
+        }
+        offset = compute_offset(tensor, indices);
+        slice->data[i] = tensor->data[offset];
+    }
+
+    free(indices);
+    return slice;
+}
+
+// 获取Tensor的元素总数
+int get_tensor_size(Tensor* tensor) {
+    int size = 1;
+    for (int i = 0; i < tensor->ndim; i++) {
+        size *= tensor->shape[i];
+    }
+    return size;
+}
+
+// Tensor的squeeze操作，只移除指定dim维度的大小为1的维度
+Tensor* tensor_squeeze(Tensor* tensor, int dim) {
+    // 检查dim维度是否为1
+    if (tensor->shape[dim] != 1) {
+        printf("Error: The dimension %d is not of size 1!\n", dim);
+        return tensor;  // 如果该维度不是1，直接返回原Tensor
+    }
+    // 创建一个新的Tensor来存储squeeze后的结果
+    Tensor* squeezed_tensor = (Tensor*)malloc(sizeof(Tensor));
+    // 新的Tensor形状数组
+    squeezed_tensor->ndim = tensor->ndim - 1;
+    squeezed_tensor->shape = (int*)malloc(squeezed_tensor->ndim * sizeof(int));
+    // 复制新的维度形状，去掉dim维度
+    int j = 0;
+    for (int i = 0; i < tensor->ndim; i++) {
+        if (i != dim) {
+            squeezed_tensor->shape[j++] = tensor->shape[i];
+        }
+    }
+    // 计算新的Tensor大小
+    squeezed_tensor->size = get_tensor_size(squeezed_tensor);
+    // 分配新的内存空间
+    squeezed_tensor->data = (float*)malloc(squeezed_tensor->size * sizeof(float));
+    // 使用memcpy进行数据拷贝
+    memcpy(squeezed_tensor->data, tensor->data, squeezed_tensor->size * sizeof(float));
+    return squeezed_tensor;
 }
 
 // 逐元素加法

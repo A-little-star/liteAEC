@@ -1,9 +1,10 @@
-#include "../include/tensor.h"
-#include "../include/conv2d.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "../include/parser.h"
+#include "../include/tensor.h"
+#include "../include/conv2d.h"
 
 // 创建卷积层
 Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
@@ -39,22 +40,27 @@ Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
 }
 
 // 加载卷积层参数
-void conv2d_load_params(Conv2DLayer* layer, float* weight, float* bias) {
+Parameter* conv2d_load_params(Conv2DLayer* layer, Parameter *params) {
     int in_channels = layer->in_channels;
     int out_channels = layer->out_channels;
     int kernel_h = layer->kernel_h;
     int kernel_w = layer->kernel_w;
     int group = layer->group;
+    float *weight = params[0].values;
+    float *bias = params[1].values;
 
     int weight_size = out_channels * in_channels * kernel_h * kernel_w / group;
+    assert(weight_size == params[0].size);
+    assert(out_channels == params[1].size);
 
     // 初始化权重和偏置为随机值
     for (int i = 0; i < weight_size; i++) {
-        layer->weights[i] = weight[i]; // 初始化为1.0
+        layer->weights[i] = weight[i]; // 加载权重
     }
     for (int i = 0; i < out_channels; i++) {
-        layer->bias[i] = bias[i];  // 偏置初始化为0
+        layer->bias[i] = bias[i];  // 加载偏置
     }
+    return params + 2;
 }
 
 // 释放卷积层的内存
@@ -63,6 +69,8 @@ void free_conv2d_layer(Conv2DLayer *layer) {
     free(layer->bias);
     layer->weights = NULL;
     layer->bias = NULL;
+    free(layer);
+    layer = NULL;
 }
 
 // 计算输出的高度和宽度

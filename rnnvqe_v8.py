@@ -30,7 +30,6 @@ class DepthwiseConv2d(nn.Module):
     def forward(self, x):
         x = self.depth_conv(x)
         x = self.point_conv(x)
-        
         return x
 
 class ResidualBlock(nn.Module):
@@ -73,9 +72,6 @@ class SkipBlock(nn.Module):
         proj_feats = self.conv(encoder_feats)
         proj_feats = encoder_feats
         f_en, f_de = proj_feats.shape[-1], decoder_feats.shape[-1]
-        print(f'f_en: {f_en}')
-        print(f'f_de: {f_de}')
-        print(f'')
         if f_en > f_de:
             decoder_feats = F.pad(decoder_feats, [0, f_en-f_de])    
         out = proj_feats + decoder_feats
@@ -131,6 +127,14 @@ class EncoderBlock(nn.Module):
             z = z[:,:,:-self.p_time,:]
         z = self.bn(z)
         z = self.act(z)
+        out_f = z[0, 0, :, :]
+        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_act_py.txt"
+        with open(output_file, "w") as f:
+            for row in out_f:
+                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+                f.write(formatted_row + "\n")
+        print(f'z shape: {z.shape}')
+        sys.exit()
         if self.use_res:
             z = self.resblock(z)
         return z 
@@ -289,7 +293,6 @@ class DeepVQES(nn.Module):
             else:
                 out_mic_cat = self.mic_encoders[i](out_mic_cat)
                 encoder_out.append(out_mic_cat)
-                print(f'encoder out shape: {out_mic_cat.shape}')
         
         feats = self.bottleneck(out_mic_cat)
         
@@ -309,44 +312,148 @@ class DeepVQES(nn.Module):
             "wavs": out_wavs,
         }
 
+class DeepVQES_Debug(nn.Module):
+    '''Light-weight version without the align block
+    '''
+    def __init__(self,
+                 in_dim: int = 64,
+                 out_dim: int = 50,
+                 casual: bool = True,
+                 bidirectional: bool = False):
+        super().__init__()
+        self.casual = casual
+        
+        num_layers = 4
+        
+        encoder_mic_channels = [1, 8, 16, 24, 32]
+        encoder_ref_channels = [1, 8]
+        bottleneck_channels = 32 * 6
+        decoder_channels = [32, 24, 16, 8, 1]
+
+        self.in_dim = in_dim
+        self.out_dim = out_dim 
+        self.num_layers = num_layers
+        
+        self.mic_encoders = nn.ModuleList()
+        self.ref_encoders = nn.ModuleList()
+
+        for idx in range(num_layers):
+            if idx < 1:
+                self.mic_encoders.append(
+                    EncoderBlock(encoder_mic_channels[idx], encoder_mic_channels[idx+1], causal=casual, use_res=False)
+                )
+                self.ref_encoders.append(
+                    EncoderBlock(encoder_ref_channels[idx], encoder_ref_channels[idx+1], causal=casual, use_res=False) 
+                )
+            elif idx == 1:
+                self.mic_encoders.append(
+                    EncoderBlock(encoder_mic_channels[idx]+encoder_ref_channels[idx], encoder_mic_channels[idx+1], causal=casual, use_res=False)
+                )
+            else:
+                self.mic_encoders.append(
+                    EncoderBlock(encoder_mic_channels[idx], encoder_mic_channels[idx+1], causal=casual, use_res=False)
+                )
+                                    
+        self.bottleneck = BottleNeck(bottleneck_channels, bidirectional=bidirectional)
+        
+        self.decoders = nn.ModuleList()
+        for idx in range(num_layers):
+            if idx != num_layers - 1:
+                self.decoders.append(
+                    DecoderBlock(decoder_channels[idx], decoder_channels[idx+1], upscale_factor=2, is_last=False, causal=casual, use_res=False)
+                )
+            elif idx == 0:
+                self.decoders.append(
+                    DecoderBlock(decoder_channels[idx], decoder_channels[idx+1], upscale_factor=2, is_last=True, causal=casual, use_res=False)
+                )
+            else:
+                self.decoders.append(
+                    DecoderBlock(decoder_channels[idx], decoder_channels[idx+1], upscale_factor=2, is_last=True, causal=casual)
+                )
+
+        self.fc = nn.Linear(self.in_dim - 2, self.out_dim)
+        self.sigmoid = nn.Sigmoid()
+
+        self.rnnoise_module = RnnoiseModule(n_fft=512, hop_len=256, win_len=512, up_scale=64.0, nfilter=100)
+        self.dwconv = DepthwiseConv2d(1, 8, (4, 3), (1, 2), (3, 0))
+            
+    def transform(self, f):
+        # [B, F, T] - > [B, 1, T, F]
+        mag = f.real**2 + f.imag**2 + 1e-6
+        pow_mag = mag ** 2
+        log_pow_mag = torch.log(pow_mag)
+        feat = log_pow_mag.permute(0, 2, 1).unsqueeze(1)
+        return feat
+    
+    def forward(self, mic, far):
+        wav_length = mic.shape[-1]
+        out_mic = self.rnnoise_module.forward_transform(mic)
+        out_ref = self.rnnoise_module.forward_transform(far)
+        out_mic_cat = None
+
+        mic_bfcc = out_mic[..., :100]
+        mic_diff_1 = out_mic[:, :, :, 100:106]
+        mic_diff_2 = out_mic[..., 200:206]
+        ref_bfcc = out_ref[..., :100]
+        ref_diff_1 = out_ref[..., 100:106]
+        ref_diff_2 = out_ref[..., 200:206]
+
+        out_mic = torch.concat([mic_bfcc, mic_diff_1, mic_diff_2], dim=-1)
+        out_ref = torch.concat([ref_bfcc, ref_diff_1, ref_diff_2], dim=-1)
+        
+        encoder_out = self.dwconv(out_mic)
+        return encoder_out
+        
+        
+
 def test_model():
     import soundfile as sf
     from pfdkf_zsm import pfdkf
+
     model = DeepVQES(in_dim=112, out_dim=100, casual=True, bidirectional=False)
+    model.eval()
+    cpt = torch.load("/home/node25_tmpdata/xcli/percepnet/train/exp/rnnvqe_v8_2/8.pt.tar", map_location="cpu")
+
+    state_dict = cpt['model_state_dict']
+    # 去掉 'module.' 前缀
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        # 只去掉 'module.' 前缀，但保留 'rnnoise_module.' 前缀中的 'module'
+        if key.startswith('module.') and not key.startswith('rnnoise_module.'):
+            new_key = key.replace('module.', '', 1)  # 只替换第一个 'module.'
+        else:
+            new_key = key  # 如果不符合条件则不修改
+        new_state_dict[new_key] = value
+
+    model.load_state_dict(new_state_dict)
+
     mic, sr = sf.read("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav")
     ref, sr = sf.read("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav")
     e, y = pfdkf(ref, mic)
-    # 输出文件路径
-    output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/y_py.txt"
+    min_len = min(mic.shape[-1], ref.shape[-1], e.shape[-1], y.shape[-1]) // 100
+    min_len = 18000
+    mic = mic[:min_len]
+    ref = ref[:min_len]
+    e = e[:min_len]
+    y = y[:min_len]
 
-    sf.write("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/y__py.wav", y, 48000)
-
-    # 将 Tensor 写入文件，每 50 个元素一行
-    with open(output_file, "w") as f:
-        for i in range(0, len(y), 50):  # 按步长 50 遍历
-            # 取出当前行的元素
-            row = y[i:i+50]
-            # 格式化为字符串并写入文件
-            formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-            f.write(formatted_row + "\n")
     mic = torch.from_numpy(mic).unsqueeze(0)
     y = torch.from_numpy(y).unsqueeze(0)
-    rnnoise_module = RnnoiseModule(n_fft=512, hop_len=256, win_len=512, up_scale=64.0, nfilter=100)
-    features_mic = rnnoise_module.forward_transform(mic).squeeze(0).squeeze(0)
-    features_y = rnnoise_module.forward_transform(y).squeeze(0).squeeze(0)
-    print(features_mic.shape)
-    output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_mic_py.txt"
-    output_file_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_y_py.txt"
-    with open(output_file, "w") as f:
-        for row in features_mic:
-            formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-            f.write(formatted_row + "\n")
-    with open(output_file_y, "w") as f:
-        for row in features_y:
-            formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-            f.write(formatted_row + "\n")
+    outputs = model(mic, y)["wavs"]
+    print(f'output shape: {outputs.shape}')
+    outputs_features = outputs[0, 0, :, :]
+    # output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_py.txt"
+    # with open(output_file, "w") as f:
+    #     for row in outputs_features:
+    #         formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+    #         f.write(formatted_row + "\n")
+    # output_file_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_y_py.txt"
+    # with open(output_file_y, "w") as f:
+    #     for row in features_y:
+    #         formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+    #         f.write(formatted_row + "\n")
 
-    print(f"Tensor has been written to {output_file}.")
+    # print(f"Tensor has been written to {output_file}.")
 
 
 if __name__ == "__main__":

@@ -1,13 +1,47 @@
 #include "../include/depthwise_conv2d.h"
+#include "../include/batchnorm.h"
+#include "../include/elu.h"
+#include "../include/tensor.h"
+#include "../include/model.h"
 
-typedef struct {
-    int in_channels;
-    int out_channels;
-    int kernel_h;
-    int kernel_w;
-    int stride_h;
-    int stride_w;
+EncoderBlock *create_encoder_block(int in_channels, int out_channels) {
+    EncoderBlock *block = (EncoderBlock*)malloc(sizeof(EncoderBlock));
+    block->in_channels = in_channels;
+    block->out_channels = out_channels;
+    block->kernel_h = 4;
+    block->kernel_w = 3;
+    block->stride_h = 1;
+    block->stride_w = 2;
+    block->conv2d = create_depthwise_conv2d_layer(
+        in_channels, out_channels, 
+        4, 3, 
+        1, 2, 
+        3, 0
+    );
+    block->bn = create_batchnorm_layer(out_channels, 1e-5);
+    block->act = create_elu_layer(1);
 
-    DepthwiseConv2DLayer *conv2d;
+    return block;
+}
 
-} EncoderBlock;
+void free_encoder_block(EncoderBlock *block) {
+    free_depthwise_conv2d_layer(block->conv2d);
+    free_batchnorm_layer(block->bn);
+    free_elu_layer(block->act);
+    free(block);
+}
+
+void encoderblock_load_params(EncoderBlock *block, Parameter *params) {
+    Parameter *p1 = depthwise_conv2d_load_params(block->conv2d, params);
+    Parameter *p2 = batchnorm_load_params(block->bn, p1);
+    return p2;
+}
+
+Tensor *encoderblock_forward(EncoderBlock *block, Tensor *input) {
+    Tensor *mid1 = depthwise_conv2d_forward(block->conv2d, input);
+    Tensor *mid2 = batchnorm_forward(block->bn, mid1);
+    Tensor *output = elu_forward(block->act, mid2);
+    delete_tensor(mid1);
+    delete_tensor(mid2);
+    return output;
+}

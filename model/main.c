@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 #include "../include/tensor.h"
 #include "../include/gru.h"
 #include "../include/conv2d.h"
@@ -9,9 +12,9 @@
 #include "../include/typedef.h"
 #include "../include/pfdkf.h"
 #include "../include/parser.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include "../include/batchnorm.h"
+#include "../include/elu.h"
+#include "../include/model.h"
 
 // 测试wavreader.c
 // int main() {
@@ -69,13 +72,37 @@
 //     return EXIT_SUCCESS;
 // }
 
+// 测试矩阵切片
+// int main() {
+//     // 输入参数
+//     int in_channels = 3, in_h = 4, in_w = 4;
+//     float input_data[3 * 4 * 4] = {
+//         1, 2, 3, 4,   5, 6, 7, 8,   9, 10, 11, 12,  13, 14, 15, 16, // 通道 1
+//         1, 1, 1, 1,   1, 1, 1, 1,   1, 1, 1, 1,    1, 1, 1, 1, // 通道 2
+//         0, 1, 0, 1,   0, 1, 0, 1,   0, 1, 0, 1,    0, 1, 0, 1  // 通道 3
+//     };
+//     // Tensor *input = create_tensor((int[]){3, 4, 4}, 3);
+//     Tensor *input = create_tensor((int[]){3, 4, 4}, 3);
+//     init_tensor(input, input_data);
+//     print_tensor(input);
+//     printf("\n");
+
+//     Tensor *output = tensor_squeeze(input, 0);
+//     print_tensor(output);
+
+//     // Tensor *output = tensor_slice(input, (int[]){0, 0, 0}, (int[]){2, 4, 4});
+//     // print_tensor(output);
+
+//     return 0;
+// }
+
 // 测试整个模型
 int main() {
     // *** stage 1: 读取文件 ***
     const char *filename_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
     const char *filename_ref = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav";
     const char *filename_e = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/e.wav";
-    const char *filename_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/hello.wav";
+    const char *filename_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/y.wav";
     int num_samples;                        // 样本数
     int sample_rate;                        // 采样率
     float *mic_ = read_wav_file(filename_mic, &num_samples, &sample_rate);
@@ -87,6 +114,7 @@ int main() {
     printf("stage 1 executed successfully.\n");
 
     // *** stage 2: 线性滤波与特征提取 ***
+    num_samples = 18000;  // 目前只处理18000个采样点
     // pfdkf(ref_, mic_, e_, y_, num_samples);
 
     wav_norm(mic_, num_samples);
@@ -110,50 +138,53 @@ int main() {
     printf("stage 2 executed successfully.\n");
 
     // *** stage 3: 读取模型参数并解析 ***
-    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/test_dict.txt";
+    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/model_state_dict.txt";
     ModelStateDict *sd = create_model_state_dict();
     parse_ckpt(cpt, sd);
 
     printf("stage 3 executed successfully.\n");
 
     // *** stage 4: 构建模型并加载模型参数 ***
-    DepthwiseConv2DLayer *conv2d = create_depthwise_conv2d_layer(1, 8, 4, 3, 1, 2, 3, 0);
+
+    EncoderBlock *enc1 = create_encoder_block(1, 8);
+
     Parameter *params = sd->params;
-    conv2d_load_params(conv2d->depth_conv, params[0].values, params[1].values);
-    // conv2d_load_params(conv2d->point_conv, params[2].values, params[3].values);
+    encoderblock_load_params(enc1, params);
 
     free_model_state_dict(sd);
 
     printf("stage 4 executed successfully.\n");
 
     // *** stage 5: 模型推理 ***
-    Tensor *outputs = depthwise_conv2d_forward(conv2d, features_mic);
+    print_tensor_shape(features_mic);
+    // Tensor *mid1 = depthwise_conv2d_forward(conv2d, features_mic);
+    // Tensor *mid2 = batchnorm_forward(bn, mid1);
+    // Tensor *outputs = elu_forward(elu, mid2);
+    Tensor *outputs = encoderblock_forward(enc1, features_mic);
     print_tensor_shape(outputs);
+    Tensor *o1 = tensor_slice(outputs, (int[]){0, 0, 0}, (int[]){1, 73, 55});
+    print_tensor_shape(o1);
+    Tensor *o2 = tensor_squeeze(o1, 0);
+    Tensor *o3 = tensor_squeeze(features_mic, 0);
+    print_tensor_shape(o2);
 
-    // const char *output_file_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_mic.txt";
-    // const char *output_file_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_y.txt";
-    // FILE *file = fopen(output_file_mic, "w");
-    // FILE *file_y = fopen(output_file_y, "w");
-    // if (!file) {
-    //     perror("Error opening output file");
-    //     return 1;
-    // }
+    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc.txt";
+    FILE *file = fopen(output_file, "w");
+    if (!file) {
+        perror("Error opening output file");
+        return 1;
+    }
 
-    // int T = features_mic->shape[1], F = features_mic->shape[2];
-    // for (int t = 0; t < T; t ++ ) {
-    //     for (int f = 0; f < F; f ++ ) {
-    //         float tfbin = tensor_get(features_mic, (int[]){0, t, f});
-    //         float tfbin_y = tensor_get(features_y, (int[]){0, t, f});
-    //         // float tfbin = get_value(&features, 0, t, f);
-    //         fprintf(file, "%f ", tfbin);
-    //         fprintf(file_y, "%f ", tfbin_y);
-    //     }
-    //     fprintf(file, "\n");
-    //     fprintf(file_y, "\n");
-    // }
+    int T = o2->shape[0], F = o2->shape[1];
+    for (int t = 0; t < T; t ++ ) {
+        for (int f = 0; f < F; f ++ ) {
+            float tfbin = tensor_get(o2, (int[]){t, f});
+            fprintf(file, "%f ", tfbin);
+        }
+        fprintf(file, "\n");
+    }
 
-    // fclose(file); // 关闭文件
-    // fclose(file_y);
+    fclose(file); // 关闭文件
 
     return 0;
 }

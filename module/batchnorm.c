@@ -5,6 +5,7 @@
 #include <assert.h>
 #include "../include/tensor.h"
 #include "../include/batchnorm.h"
+#include "../include/parser.h"
 
 // 创建 BatchNorm 层
 BatchNormLayer* create_batchnorm_layer(int num_features, float eps) {
@@ -34,6 +35,26 @@ void free_batchnorm_layer(BatchNormLayer* layer) {
     free(layer->running_mean);
     free(layer->running_var);
     free(layer);
+}
+
+Parameter* batchnorm_load_params(BatchNormLayer *layer, Parameter *params) {
+    float *gamma = params[0].values;
+    float *beta = params[1].values;
+    float *running_mean = params[2].values;
+    float *running_var = params[3].values;
+    assert(layer->num_features == params[0].size);
+    assert(layer->num_features == params[1].size);
+    assert(layer->num_features == params[2].size);
+    assert(layer->num_features == params[3].size);
+
+    for (int i = 0; i < layer->num_features; i ++) {
+        layer->gamma[i] = gamma[i];
+        layer->beta[i] = beta[i];
+        layer->running_mean[i] = running_mean[i];
+        layer->running_var[i] = running_var[i];
+    }
+    // 这里加5的原因是batchnorm层会多一个参数num_batches_tracked，好像没什么用，把它跳了
+    return params + 5;
 }
 
 // BatchNorm 前向推理

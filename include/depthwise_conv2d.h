@@ -19,6 +19,8 @@ DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_cha
                                 int stride_h, int stride_w,
                                 int padding_h, int padding_w);
 
+Parameter* depthwise_conv2d_load_params(DepthwiseConv2DLayer *layer, Parameter *params);
+
 void free_depthwise_conv2d_layer(DepthwiseConv2DLayer *layer);
 
 Tensor* depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor *input);

@@ -25,6 +25,10 @@ void print_tensor(const Tensor* tensor);
 void tensor_set(Tensor* tensor, const int* indices, float value);
 // 获取Tensor某位置的值
 float tensor_get(const Tensor* tensor, const int* indices);
+// 矩阵切片
+Tensor* tensor_slice(Tensor* tensor, int* start_indices, int* end_indices);
+
+Tensor* tensor_squeeze(Tensor* tensor, int dim);
 
 // 矩阵运算
 

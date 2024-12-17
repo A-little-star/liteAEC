@@ -1,7 +1,7 @@
 #include "../include/_kiss_fft_guts.h"
 #include "../include/typedef.h"
 #include "../include/kiss_fft.h"
-#include "../include/matrix_op.h"
+#include "../include/tensor.h"
 #include "../include/rnnoise.h"
 #include <stdlib.h>
 #include <string.h>
@@ -93,14 +93,17 @@ void feature_extract(Tensor* input, Tensor* cspecs, Tensor* features) {
   DenoiseState *noisy;
   noisy = rnnoise_create();
 
-  for (int s = 0, num_frame = 0; s + win_len < length; s += hop_len, num_frame ++ ) {
+  for (int s = -hop_len, num_frame = 0; s + win_len < length; s += hop_len, num_frame ++ ) {
     float x[FFT_LEN];
     kiss_fft_cpx X[FREQ_SIZE];
     float Ex[NB_BANDS];
     float feature[NB_FEATURES];
 
     for (int i = 0; i < WINDOW_SIZE; i ++ )
-      x[i] = input->data[s + i];
+      if (s + i >= 0)
+        x[i] = input->data[s + i];
+      else
+        x[i] = 0;
     for (int i = WINDOW_SIZE; i < FFT_LEN; i ++ )
       x[i] = 0;
     
@@ -175,9 +178,9 @@ int compute_frame_features(DenoiseState *st, kiss_fft_cpx *X,
   //Ly[i] will increase instantly; and Ly[i] will decrease for a certain time
   for (i=0;i<NB_BANDS;i++) {
     Ly[i] = log10(1e-2+Ex[i]);
-    Ly[i] = MAX16(logMax-7, MAX16(follow-1.5, Ly[i]));
-    logMax = MAX16(logMax, Ly[i]);
-    follow = MAX16(follow-1.5, Ly[i]);
+    // Ly[i] = MAX16(logMax-7, MAX16(follow-1.5, Ly[i]));
+    // logMax = MAX16(logMax, Ly[i]);
+    // follow = MAX16(follow-1.5, Ly[i]);
     E += Ex[i];
   }
 

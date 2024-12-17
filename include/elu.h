@@ -1,14 +1,15 @@
 #ifndef ELU_H
 #define ELU_H
 
+// ELU 层定义
 typedef struct {
-    float alpha;  // ELU 的 alpha 参数，通常是 1
+    float alpha;  // 控制负值部分的参数
 } ELULayer;
 
-ELULayer create_elu_layer(float alpha);
+ELULayer* create_elu_layer(float alpha);
 
 void free_elu_layer(ELULayer *layer);
 
-void elu_forward(ELULayer *layer, float *input, int size, float *output);
+Tensor* elu_forward(ELULayer* layer, Tensor* input);
 
 #endif

@@ -1,5 +1,6 @@
 #include "../include/conv2d.h"
 #include "../include/depthwise_conv2d.h"
+#include "../include/parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,9 +36,17 @@ DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_cha
     return layer;
 };
 
+Parameter* depthwise_conv2d_load_params(DepthwiseConv2DLayer *layer, Parameter *params) {
+    Parameter *p1 = conv2d_load_params(layer->depth_conv, params);
+    Parameter *p2 = conv2d_load_params(layer->point_conv, p1);
+    return p2;
+}
+
 void free_depthwise_conv2d_layer(DepthwiseConv2DLayer *layer) {
     free_conv2d_layer(layer->depth_conv);
     free_conv2d_layer(layer->point_conv);
+    free(layer);
+    layer = NULL;
 }
 
 Tensor* depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor *input) {
