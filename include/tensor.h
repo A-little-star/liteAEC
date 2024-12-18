@@ -27,8 +27,10 @@ void tensor_set(Tensor* tensor, const int* indices, float value);
 float tensor_get(const Tensor* tensor, const int* indices);
 // 矩阵切片
 Tensor* tensor_slice(Tensor* tensor, int* start_indices, int* end_indices);
-
+// squeeze()操作，将第dim维度折叠
 Tensor* tensor_squeeze(Tensor* tensor, int dim);
+// concat拼接操作
+Tensor* concatenate(Tensor* tensor1, Tensor* tensor2, int dim);
 
 // 矩阵运算
 

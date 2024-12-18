@@ -127,14 +127,6 @@ class EncoderBlock(nn.Module):
             z = z[:,:,:-self.p_time,:]
         z = self.bn(z)
         z = self.act(z)
-        out_f = z[0, 0, :, :]
-        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_act_py.txt"
-        with open(output_file, "w") as f:
-            for row in out_f:
-                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-                f.write(formatted_row + "\n")
-        print(f'z shape: {z.shape}')
-        sys.exit()
         if self.use_res:
             z = self.resblock(z)
         return z 
@@ -278,6 +270,18 @@ class DeepVQES(nn.Module):
 
         out_mic = torch.concat([mic_bfcc, mic_diff_1, mic_diff_2], dim=-1)
         out_ref = torch.concat([ref_bfcc, ref_diff_1, ref_diff_2], dim=-1)
+
+        # out_mic = out_mic[:, :, 1:, :]
+        # out_ref = out_ref[:, :, 1:, :]
+
+        print(f'out mic shape: {out_mic.shape}')
+        out_f = out_mic[0, 0, :, :]
+        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_mic_py.txt"
+        with open(output_file, "w") as f:
+            for row in out_f:
+                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+                f.write(formatted_row + "\n")
+        sys.exit()
         
         encoder_out = []
         
@@ -292,7 +296,24 @@ class DeepVQES(nn.Module):
                 encoder_out.append(out_mic_cat)
             else:
                 out_mic_cat = self.mic_encoders[i](out_mic_cat)
+                print(f'out mic cat shape: {out_mic_cat.shape}')
+                out_f = out_mic_cat[0, 0, :, :]
+                output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc3_py.txt"
+                with open(output_file, "w") as f:
+                    for row in out_f:
+                        formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+                        f.write(formatted_row + "\n")
+                sys.exit()
                 encoder_out.append(out_mic_cat)
+        
+        print(f'out mic cat shape: {out_mic_cat.shape}')
+        out_f = out_mic_cat[0, 1, :, :]
+        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc4_py.txt"
+        with open(output_file, "w") as f:
+            for row in out_f:
+                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+                f.write(formatted_row + "\n")
+        sys.exit()
         
         feats = self.bottleneck(out_mic_cat)
         
@@ -311,100 +332,6 @@ class DeepVQES(nn.Module):
             "specs": out_specs,
             "wavs": out_wavs,
         }
-
-class DeepVQES_Debug(nn.Module):
-    '''Light-weight version without the align block
-    '''
-    def __init__(self,
-                 in_dim: int = 64,
-                 out_dim: int = 50,
-                 casual: bool = True,
-                 bidirectional: bool = False):
-        super().__init__()
-        self.casual = casual
-        
-        num_layers = 4
-        
-        encoder_mic_channels = [1, 8, 16, 24, 32]
-        encoder_ref_channels = [1, 8]
-        bottleneck_channels = 32 * 6
-        decoder_channels = [32, 24, 16, 8, 1]
-
-        self.in_dim = in_dim
-        self.out_dim = out_dim 
-        self.num_layers = num_layers
-        
-        self.mic_encoders = nn.ModuleList()
-        self.ref_encoders = nn.ModuleList()
-
-        for idx in range(num_layers):
-            if idx < 1:
-                self.mic_encoders.append(
-                    EncoderBlock(encoder_mic_channels[idx], encoder_mic_channels[idx+1], causal=casual, use_res=False)
-                )
-                self.ref_encoders.append(
-                    EncoderBlock(encoder_ref_channels[idx], encoder_ref_channels[idx+1], causal=casual, use_res=False) 
-                )
-            elif idx == 1:
-                self.mic_encoders.append(
-                    EncoderBlock(encoder_mic_channels[idx]+encoder_ref_channels[idx], encoder_mic_channels[idx+1], causal=casual, use_res=False)
-                )
-            else:
-                self.mic_encoders.append(
-                    EncoderBlock(encoder_mic_channels[idx], encoder_mic_channels[idx+1], causal=casual, use_res=False)
-                )
-                                    
-        self.bottleneck = BottleNeck(bottleneck_channels, bidirectional=bidirectional)
-        
-        self.decoders = nn.ModuleList()
-        for idx in range(num_layers):
-            if idx != num_layers - 1:
-                self.decoders.append(
-                    DecoderBlock(decoder_channels[idx], decoder_channels[idx+1], upscale_factor=2, is_last=False, causal=casual, use_res=False)
-                )
-            elif idx == 0:
-                self.decoders.append(
-                    DecoderBlock(decoder_channels[idx], decoder_channels[idx+1], upscale_factor=2, is_last=True, causal=casual, use_res=False)
-                )
-            else:
-                self.decoders.append(
-                    DecoderBlock(decoder_channels[idx], decoder_channels[idx+1], upscale_factor=2, is_last=True, causal=casual)
-                )
-
-        self.fc = nn.Linear(self.in_dim - 2, self.out_dim)
-        self.sigmoid = nn.Sigmoid()
-
-        self.rnnoise_module = RnnoiseModule(n_fft=512, hop_len=256, win_len=512, up_scale=64.0, nfilter=100)
-        self.dwconv = DepthwiseConv2d(1, 8, (4, 3), (1, 2), (3, 0))
-            
-    def transform(self, f):
-        # [B, F, T] - > [B, 1, T, F]
-        mag = f.real**2 + f.imag**2 + 1e-6
-        pow_mag = mag ** 2
-        log_pow_mag = torch.log(pow_mag)
-        feat = log_pow_mag.permute(0, 2, 1).unsqueeze(1)
-        return feat
-    
-    def forward(self, mic, far):
-        wav_length = mic.shape[-1]
-        out_mic = self.rnnoise_module.forward_transform(mic)
-        out_ref = self.rnnoise_module.forward_transform(far)
-        out_mic_cat = None
-
-        mic_bfcc = out_mic[..., :100]
-        mic_diff_1 = out_mic[:, :, :, 100:106]
-        mic_diff_2 = out_mic[..., 200:206]
-        ref_bfcc = out_ref[..., :100]
-        ref_diff_1 = out_ref[..., 100:106]
-        ref_diff_2 = out_ref[..., 200:206]
-
-        out_mic = torch.concat([mic_bfcc, mic_diff_1, mic_diff_2], dim=-1)
-        out_ref = torch.concat([ref_bfcc, ref_diff_1, ref_diff_2], dim=-1)
-        
-        encoder_out = self.dwconv(out_mic)
-        return encoder_out
-        
-        
 
 def test_model():
     import soundfile as sf
@@ -439,7 +366,7 @@ def test_model():
 
     mic = torch.from_numpy(mic).unsqueeze(0)
     y = torch.from_numpy(y).unsqueeze(0)
-    outputs = model(mic, y)["wavs"]
+    outputs = model(mic, mic)["wavs"]
     print(f'output shape: {outputs.shape}')
     outputs_features = outputs[0, 0, :, :]
     # output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_py.txt"

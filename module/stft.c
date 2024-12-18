@@ -93,7 +93,7 @@ void feature_extract(Tensor* input, Tensor* cspecs, Tensor* features) {
   DenoiseState *noisy;
   noisy = rnnoise_create();
 
-  for (int s = -hop_len, num_frame = 0; s + win_len < length; s += hop_len, num_frame ++ ) {
+  for (int s = 0, num_frame = 0; s + win_len < length; s += hop_len, num_frame ++ ) {
     float x[FFT_LEN];
     kiss_fft_cpx X[FREQ_SIZE];
     float Ex[NB_BANDS];

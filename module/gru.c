@@ -1,4 +1,4 @@
-#include "../include/matrix_op.h"
+#include "../include/tensor.h"
 #include "../include/gru.h"
 #include "../include/act_func.h"
 #include <stdio.h>

@@ -96,6 +96,34 @@
 //     return 0;
 // }
 
+// 测试concatenate函数
+// int main() {
+//     // 输入参数
+//     int in_channels = 3, in_h = 4, in_w = 4;
+//     float input_data1[3 * 2 * 4] = {
+//         1, 2, 3, 4,   5, 6, 7, 8,  // 通道 1
+//         1, 1, 1, 1,   1, 1, 1, 1,  // 通道 2
+//         0, 1, 0, 1,   0, 1, 0, 1,  // 通道 3
+//     };
+//     float input_data2[1 * 2 * 4] = {
+//         9, 10, 11, 12,  13, 14, 15, 16, // 通道 1
+//     };
+//     // Tensor *input = create_tensor((int[]){3, 4, 4}, 3);
+//     Tensor *input1 = create_tensor((int[]){3, 2, 4}, 3);
+//     init_tensor(input1, input_data1);
+//     Tensor *input2 = create_tensor((int[]){1, 2, 4}, 3);
+//     init_tensor(input2, input_data2);
+//     print_tensor(input1);
+//     printf("\n");
+//     print_tensor(input2);
+//     printf("\n");
+
+//     Tensor *output = concatenate(input1, input2, 0);
+//     print_tensor(output);
+//     printf("\n");
+//     return 0;
+// }
+
 // 测试整个模型
 int main() {
     // *** stage 1: 读取文件 ***
@@ -138,7 +166,7 @@ int main() {
     printf("stage 2 executed successfully.\n");
 
     // *** stage 3: 读取模型参数并解析 ***
-    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/model_state_dict.txt";
+    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/test_dict.txt";
     ModelStateDict *sd = create_model_state_dict();
     parse_ckpt(cpt, sd);
 
@@ -146,10 +174,12 @@ int main() {
 
     // *** stage 4: 构建模型并加载模型参数 ***
 
-    EncoderBlock *enc1 = create_encoder_block(1, 8);
+    // EncoderBlock *enc1 = create_encoder_block(1, 8);
+    RNNVQE *model = create_rnnvqe();
 
     Parameter *params = sd->params;
-    encoderblock_load_params(enc1, params);
+    // encoderblock_load_params(enc1, params);
+    rnnvqe_load_params(model, sd);
 
     free_model_state_dict(sd);
 
@@ -160,15 +190,17 @@ int main() {
     // Tensor *mid1 = depthwise_conv2d_forward(conv2d, features_mic);
     // Tensor *mid2 = batchnorm_forward(bn, mid1);
     // Tensor *outputs = elu_forward(elu, mid2);
-    Tensor *outputs = encoderblock_forward(enc1, features_mic);
+    // Tensor *outputs = encoderblock_forward(enc1, features_mic);
+    Tensor *outputs = rnnvqe_forward(model, features_mic, features_mic);
+    printf("outputs shape:\n");
     print_tensor_shape(outputs);
-    Tensor *o1 = tensor_slice(outputs, (int[]){0, 0, 0}, (int[]){1, 73, 55});
+    Tensor *o1 = tensor_slice(outputs, (int[]){0, 0, 0}, (int[]){1, outputs->shape[1], outputs->shape[2]});
     print_tensor_shape(o1);
     Tensor *o2 = tensor_squeeze(o1, 0);
     Tensor *o3 = tensor_squeeze(features_mic, 0);
     print_tensor_shape(o2);
 
-    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc.txt";
+    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc3.txt";
     FILE *file = fopen(output_file, "w");
     if (!file) {
         perror("Error opening output file");

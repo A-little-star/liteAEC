@@ -16,9 +16,20 @@ typedef struct {
     BatchNormLayer *bn;
     ELULayer *act;
 } EncoderBlock;
+
+typedef struct {
+    EncoderBlock *mic_enc[4];
+    EncoderBlock *ref_enc;
+} RNNVQE;
+
 EncoderBlock *create_encoder_block(int in_channels, int out_channels);
 void free_encoder_block(EncoderBlock *block);
 Parameter* encoderblock_load_params(EncoderBlock *block, Parameter *params);
 Tensor *encoderblock_forward(EncoderBlock *block, Tensor *input);
+
+RNNVQE* create_rnnvqe();
+Parameter* rnnvqe_load_params(RNNVQE *model, ModelStateDict *sd);
+void free_rnnvqe(RNNVQE *model);
+Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref);
 
 #endif

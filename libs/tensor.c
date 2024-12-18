@@ -1,7 +1,9 @@
-#include "../include/tensor.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
+#include <assert.h>
+#include "../include/tensor.h"
 
 // 创建一个新的张量
 Tensor* create_tensor(int* shape, int ndim) {
@@ -144,6 +146,10 @@ Tensor* tensor_slice(Tensor* tensor, int* start_indices, int* end_indices) {
     Tensor* slice = (Tensor*)malloc(sizeof(Tensor));
     slice->ndim = tensor->ndim;
     slice->shape = (int*)malloc(slice->ndim * sizeof(int));
+
+    for (int i = 0; i < tensor->ndim; i ++ ) {
+        assert(end_indices[i] <= tensor->shape[i]);
+    }
     
     int size = 1;
     for (int i = 0; i < slice->ndim; i++) {
@@ -207,6 +213,58 @@ Tensor* tensor_squeeze(Tensor* tensor, int dim) {
     // 使用memcpy进行数据拷贝
     memcpy(squeezed_tensor->data, tensor->data, squeezed_tensor->size * sizeof(float));
     return squeezed_tensor;
+}
+
+// concatenate 函数实现
+Tensor* concatenate(Tensor* tensor1, Tensor* tensor2, int dim) {
+    // 检查维度是否匹配
+    if (tensor1->ndim != tensor2->ndim) {
+        fprintf(stderr, "Tensors must have the same number of dimensions.\n");
+        return NULL;
+    }
+
+    for (int i = 0; i < tensor1->ndim; i++) {
+        if (i != dim && tensor1->shape[i] != tensor2->shape[i]) {
+            fprintf(stderr, "Tensors must have the same shape except for the concatenation dimension.\n");
+            return NULL;
+        }
+    }
+
+    // 计算拼接后的新形状
+    int* new_shape = (int*)malloc(tensor1->ndim * sizeof(int));
+    for (int i = 0; i < tensor1->ndim; i++) {
+        if (i == dim) {
+            new_shape[i] = tensor1->shape[i] + tensor2->shape[i]; // 拼接维度的大小
+        } else {
+            new_shape[i] = tensor1->shape[i]; // 其他维度保持不变
+        }
+    }
+
+    // 创建拼接后的输出 Tensor
+    Tensor* result = create_tensor(new_shape, tensor1->ndim);
+    free(new_shape);
+
+    // 拼接数据
+    int dim_before_cat = 1, t1_dim_after_cat = 1, t2_dim_after_cat = 1;
+    for (int i = 0; i < dim; i ++ ) {
+        dim_before_cat *= tensor1->shape[i];
+    }
+    for (int i = dim; i < tensor1->ndim; i ++ ) {
+        t1_dim_after_cat *= tensor1->shape[i];
+        t2_dim_after_cat *= tensor2->shape[i];
+    }
+
+    int off1 = 0, off2 = 0, offr = 0;
+    for (int i = 0; i < dim_before_cat; i ++ ) {
+        memcpy(result->data + offr, tensor1->data + off1, t1_dim_after_cat * sizeof(float));
+        off1 += t1_dim_after_cat;
+        offr += t1_dim_after_cat;
+        memcpy(result->data + offr, tensor2->data + off2, t2_dim_after_cat * sizeof(float));
+        off2 += t2_dim_after_cat;
+        offr += t2_dim_after_cat;
+    }
+
+    return result;
 }
 
 // 逐元素加法

@@ -31,16 +31,18 @@ void free_encoder_block(EncoderBlock *block) {
     free(block);
 }
 
-void encoderblock_load_params(EncoderBlock *block, Parameter *params) {
+Parameter* encoderblock_load_params(EncoderBlock *block, Parameter *params) {
     Parameter *p1 = depthwise_conv2d_load_params(block->conv2d, params);
     Parameter *p2 = batchnorm_load_params(block->bn, p1);
     return p2;
 }
 
 Tensor *encoderblock_forward(EncoderBlock *block, Tensor *input) {
-    Tensor *mid1 = depthwise_conv2d_forward(block->conv2d, input);
+    Tensor *mid0 = depthwise_conv2d_forward(block->conv2d, input);
+    Tensor *mid1 = tensor_slice(mid0, (int[]){0, 0, 0}, (int[]){mid0->shape[0], mid0->shape[1] - 3, mid0->shape[2]});
     Tensor *mid2 = batchnorm_forward(block->bn, mid1);
     Tensor *output = elu_forward(block->act, mid2);
+    delete_tensor(mid0);
     delete_tensor(mid1);
     delete_tensor(mid2);
     return output;
