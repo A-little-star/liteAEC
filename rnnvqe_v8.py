@@ -151,6 +151,16 @@ class BottleNeck(nn.Module):
         x = x.reshape(B, T, -1).contiguous()
         x, _ = self.rnn(x)
         x = self.fc(x)
+
+        print(f'out mic cat shape: {x.shape}')
+        out_f = x[0, :, :]
+        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/after_fc_py.txt"
+        with open(output_file, "w") as f:
+            for row in out_f:
+                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+                f.write(formatted_row + "\n")
+        sys.exit()
+
         x = x.reshape(B, T, C, -1).permute(0, 2, 1, 3)
         return x 
 
@@ -274,15 +284,6 @@ class DeepVQES(nn.Module):
         # out_mic = out_mic[:, :, 1:, :]
         # out_ref = out_ref[:, :, 1:, :]
 
-        print(f'out mic shape: {out_mic.shape}')
-        out_f = out_mic[0, 0, :, :]
-        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_mic_py.txt"
-        with open(output_file, "w") as f:
-            for row in out_f:
-                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-                f.write(formatted_row + "\n")
-        sys.exit()
-        
         encoder_out = []
         
         for i in range(self.num_layers):
@@ -296,24 +297,7 @@ class DeepVQES(nn.Module):
                 encoder_out.append(out_mic_cat)
             else:
                 out_mic_cat = self.mic_encoders[i](out_mic_cat)
-                print(f'out mic cat shape: {out_mic_cat.shape}')
-                out_f = out_mic_cat[0, 0, :, :]
-                output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc3_py.txt"
-                with open(output_file, "w") as f:
-                    for row in out_f:
-                        formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-                        f.write(formatted_row + "\n")
-                sys.exit()
                 encoder_out.append(out_mic_cat)
-        
-        print(f'out mic cat shape: {out_mic_cat.shape}')
-        out_f = out_mic_cat[0, 1, :, :]
-        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc4_py.txt"
-        with open(output_file, "w") as f:
-            for row in out_f:
-                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-                f.write(formatted_row + "\n")
-        sys.exit()
         
         feats = self.bottleneck(out_mic_cat)
         

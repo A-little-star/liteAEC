@@ -124,6 +124,16 @@
 //     return 0;
 // }
 
+// 测试GRU
+// int main() {
+//     Tensor *input = create_tensor((int[]){2, 2}, 2);
+//     GRULayer *gru = create_gru_layer(2, 2);
+//     Tensor *hidden_state = create_tensor((int[]){2}, 1);
+//     Tensor *output = gru_forward(gru, input, hidden_state);
+//     print_tensor_shape(output);
+//     return 0;
+// }
+
 // 测试整个模型
 int main() {
     // *** stage 1: 读取文件 ***
@@ -166,9 +176,11 @@ int main() {
     printf("stage 2 executed successfully.\n");
 
     // *** stage 3: 读取模型参数并解析 ***
-    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/test_dict.txt";
-    ModelStateDict *sd = create_model_state_dict();
-    parse_ckpt(cpt, sd);
+    // const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/test_dict.txt";
+    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/model_weights.json";
+    // ModelStateDict *sd = create_model_state_dict();
+    // parse_ckpt(cpt, sd);
+    ModelStateDict *sd = parse_json_to_parameters(cpt);
 
     printf("stage 3 executed successfully.\n");
 
@@ -186,31 +198,32 @@ int main() {
     printf("stage 4 executed successfully.\n");
 
     // *** stage 5: 模型推理 ***
+    printf("input shape:\n");
     print_tensor_shape(features_mic);
     // Tensor *mid1 = depthwise_conv2d_forward(conv2d, features_mic);
     // Tensor *mid2 = batchnorm_forward(bn, mid1);
     // Tensor *outputs = elu_forward(elu, mid2);
     // Tensor *outputs = encoderblock_forward(enc1, features_mic);
     Tensor *outputs = rnnvqe_forward(model, features_mic, features_mic);
-    printf("outputs shape:\n");
+    printf("output shape:\n");
     print_tensor_shape(outputs);
-    Tensor *o1 = tensor_slice(outputs, (int[]){0, 0, 0}, (int[]){1, outputs->shape[1], outputs->shape[2]});
-    print_tensor_shape(o1);
-    Tensor *o2 = tensor_squeeze(o1, 0);
-    Tensor *o3 = tensor_squeeze(features_mic, 0);
-    print_tensor_shape(o2);
+    // Tensor *o1 = tensor_slice(outputs, (int[]){0, 0, 0}, (int[]){1, outputs->shape[1], outputs->shape[2]});
+    // print_tensor_shape(o1);
+    // Tensor *o2 = tensor_squeeze(o1, 0);
+    // Tensor *o3 = tensor_squeeze(features_mic, 0);
+    // print_tensor_shape(o2);
 
-    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_enc3.txt";
+    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/debug.txt";
     FILE *file = fopen(output_file, "w");
     if (!file) {
         perror("Error opening output file");
         return 1;
     }
 
-    int T = o2->shape[0], F = o2->shape[1];
+    int T = outputs->shape[0], F = outputs->shape[1];
     for (int t = 0; t < T; t ++ ) {
         for (int f = 0; f < F; f ++ ) {
-            float tfbin = tensor_get(o2, (int[]){t, f});
+            float tfbin = tensor_get(outputs, (int[]){t, f});
             fprintf(file, "%f ", tfbin);
         }
         fprintf(file, "\n");
@@ -220,45 +233,3 @@ int main() {
 
     return 0;
 }
-
-// 测试卷积模块
-// int main() {
-//     // 输入参数
-//     int in_channels = 3, in_h = 4, in_w = 4;
-//     float input_data[3 * 4 * 4] = {
-//         1, 2, 3, 4,   5, 6, 7, 8,   9, 10, 11, 12,  13, 14, 15, 16, // 通道 1
-//         1, 1, 1, 1,   1, 1, 1, 1,   1, 1, 1, 1,    1, 1, 1, 1, // 通道 2
-//         0, 1, 0, 1,   0, 1, 0, 1,   0, 1, 0, 1,    0, 1, 0, 1  // 通道 3
-//     };
-//     Tensor input = create_tensor(3, 4, 4);
-//     init_tensor(&input, input_data);
-
-//     // 卷积层参数
-//     int out_channels = 2, kernel_h = 3, kernel_w = 3, stride_h = 1, stride_w = 1;
-//     int padding_h = 1, padding_w = 1; // 使用 0 填充
-//     int group = 1;
-//     Conv2DLayer conv_layer = create_conv2d_layer(in_channels, out_channels,
-//                                                  kernel_h, kernel_w,
-//                                                  stride_h, stride_w,
-//                                                  padding_h, padding_w,
-//                                                  group);
-//     DepthwiseConv2DLayer depthwise_conv2d_layer = create_depthwise_conv2d_layer(in_channels, out_channels, 
-//                                                                                 kernel_h, kernel_w,
-//                                                                                 stride_h, stride_w, padding_h, padding_w);
-
-//     // 执行卷积
-//     Tensor output = conv2d_forward(&conv_layer, input);
-//     Tensor output_dwconv = depthwise_conv2d_forward(&depthwise_conv2d_layer, input);
-
-//     // 打印输出结果
-//     printf("Output conv2d:\n");
-//     print_tensor(&output);
-//     printf("Output dwconv2d:\n");
-//     print_tensor(&output_dwconv);
-
-//     // 释放内存
-//     free_conv2d_layer(&conv_layer);
-//     free_depthwise_conv2d_layer(&depthwise_conv2d_layer);
-
-//     return 0;
-// }

@@ -22,4 +22,8 @@ void parse_ckpt(const char *filename, ModelStateDict *sd);
 ModelStateDict *create_model_state_dict();
 void free_model_state_dict(ModelStateDict *sd);
 
+// 函数声明
+ModelStateDict *parse_json_to_parameters(const char *filename);
+void free_parameters(Parameter *parameters, int param_count);
+
 #endif

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "../include/depthwise_conv2d.h"
 #include "../include/batchnorm.h"
 #include "../include/elu.h"
@@ -25,10 +26,12 @@ EncoderBlock *create_encoder_block(int in_channels, int out_channels) {
 }
 
 void free_encoder_block(EncoderBlock *block) {
-    free_depthwise_conv2d_layer(block->conv2d);
-    free_batchnorm_layer(block->bn);
-    free_elu_layer(block->act);
-    free(block);
+    if (block) {
+        free_depthwise_conv2d_layer(block->conv2d);
+        free_batchnorm_layer(block->bn);
+        free_elu_layer(block->act);
+        free(block);
+    }
 }
 
 Parameter* encoderblock_load_params(EncoderBlock *block, Parameter *params) {

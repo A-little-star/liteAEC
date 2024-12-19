@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 #include "../include/tensor.h"
 
 // 创建一个新的张量
@@ -265,6 +266,94 @@ Tensor* concatenate(Tensor* tensor1, Tensor* tensor2, int dim) {
     }
 
     return result;
+}
+
+// permute函数
+Tensor* permute(const Tensor* input, const int* permute_order) {
+    // 1. 检查输入是否合法
+    int ndim = input->ndim;
+    for (int i = 0; i < ndim; ++i) {
+        if (permute_order[i] < 0 || permute_order[i] >= ndim) {
+            fprintf(stderr, "Invalid permute order.\n");
+            return NULL;
+        }
+    }
+
+    // 2. 创建新的shape
+    int* new_shape = (int*)malloc(ndim * sizeof(int));
+    for (int i = 0; i < ndim; ++i) {
+        new_shape[i] = input->shape[permute_order[i]];
+    }
+    // 3. 创建新的Tensor
+    Tensor* output = (Tensor*)malloc(sizeof(Tensor));
+    output->ndim = ndim;
+    output->size = input->size;
+    output->shape = new_shape;
+    output->data = (float*)malloc(output->size * sizeof(float));
+
+    // 4. 对数据进行重新排列
+    int* indices = (int*)malloc(ndim * sizeof(int));
+    for (int i = 0; i < output->size; ++i) {
+        // 计算目标Tensor的多维索引
+        int remaining = i;
+        for (int j = ndim - 1; j >= 0; --j) {
+            indices[j] = remaining % new_shape[j];
+            remaining /= new_shape[j];
+        }
+        // 根据permute_order找到原始Tensor的多维索引
+        int* original_indices = (int*)malloc(ndim * sizeof(int));
+        for (int j = 0; j < ndim; ++j) {
+            original_indices[permute_order[j]] = indices[j];
+        }
+
+        // 找到原始Tensor的线性索引，并复制数据
+        int original_index = compute_offset(input, original_indices);
+        output->data[i] = input->data[original_index];
+
+        free(original_indices);
+    }
+
+    free(indices);
+    return output;
+}
+
+// 检查新的shape是否合法
+int is_valid_shape(const Tensor* input, const int* new_shape, int new_ndim) {
+    int new_size = 1;
+    for (int i = 0; i < new_ndim; ++i) {
+        if (new_shape[i] <= 0) {
+            return false; // 所有维度必须为正整数
+        }
+        new_size *= new_shape[i];
+    }
+    return new_size == input->size; // 确保元素总数匹配
+}
+
+// reshape函数
+Tensor* reshape(const Tensor* input, const int* new_shape, int new_ndim) {
+    // 检查新形状是否合法
+    if (!is_valid_shape(input, new_shape, new_ndim)) {
+        fprintf(stderr, "Invalid shape: Total elements do not match.\n");
+        return NULL;
+    }
+
+    // 创建新的Tensor
+    Tensor* output = (Tensor*)malloc(sizeof(Tensor));
+    output->ndim = new_ndim;
+    output->size = input->size;
+    output->shape = (int*)malloc(new_ndim * sizeof(int));
+    for (int i = 0; i < new_ndim; ++i) {
+        output->shape[i] = new_shape[i];
+    }
+
+    // 数据共享（浅复制）
+    // output->data = input->data; // reshape不改变数据存储方式
+    // 深复制
+    output->data = (float*)malloc(output->size * sizeof(float));
+    for (int i = 0; i < input->size; i ++ )
+        output->data[i] = input->data[i];
+
+    return output;
 }
 
 // 逐元素加法

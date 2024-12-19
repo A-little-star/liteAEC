@@ -31,6 +31,10 @@ Tensor* tensor_slice(Tensor* tensor, int* start_indices, int* end_indices);
 Tensor* tensor_squeeze(Tensor* tensor, int dim);
 // concat拼接操作
 Tensor* concatenate(Tensor* tensor1, Tensor* tensor2, int dim);
+// permute操作
+Tensor* permute(const Tensor* input, const int* permute_order);
+// reshape操作
+Tensor* reshape(const Tensor* input, const int* new_shape, int new_ndim);
 
 // 矩阵运算
 

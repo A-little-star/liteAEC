@@ -55,6 +55,10 @@ $(TARGET): $(OBJ)
 run:
 	$(BIN_DIR)/inference
 
+# 启动 gdb 调试
+debug: $(TARGET)
+	gdb $(TARGET)
+
 # 清理编译生成的文件
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET)

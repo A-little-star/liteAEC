@@ -1,134 +1,161 @@
-#include "../include/tensor.h"
-#include "../include/gru.h"
-#include "../include/act_func.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
+#include <assert.h>
 
-// 初始化 GRU 层
-GRULayer create_gru_layer(int input_size, int hidden_size) {
-    GRULayer layer;
-    layer.input_size = input_size;
-    layer.hidden_size = hidden_size;
+#include "../include/tensor.h"
+#include "../include/gru.h"
+#include "../include/act_func.h"
+#include "../include/parser.h"
 
-    // 分配权重和偏置的内存
-    int weight_size = input_size * hidden_size;
-    int hidden_weight_size = hidden_size * hidden_size;
+// 创建 GRU 层
+GRULayer* create_gru_layer(int input_size, int hidden_size) {
+    GRULayer* layer = (GRULayer*)malloc(sizeof(GRULayer));
+    layer->input_size = input_size;
+    layer->hidden_size = hidden_size;
 
-    layer.W_z = (float *)malloc(weight_size * sizeof(float));
-    layer.U_z = (float *)malloc(hidden_weight_size * sizeof(float));
-    layer.b_z = (float *)malloc(hidden_size * sizeof(float));
+    int input_hidden_size = input_size * hidden_size;
+    int hidden_hidden_size = hidden_size * hidden_size;
 
-    layer.W_r = (float *)malloc(weight_size * sizeof(float));
-    layer.U_r = (float *)malloc(hidden_weight_size * sizeof(float));
-    layer.b_r = (float *)malloc(hidden_size * sizeof(float));
+    // 分配内存
+    layer->W_ir = (float*)malloc(input_hidden_size * sizeof(float));
+    layer->W_iz = (float*)malloc(input_hidden_size * sizeof(float));
+    layer->W_in = (float*)malloc(input_hidden_size * sizeof(float));
 
-    layer.W_h = (float *)malloc(weight_size * sizeof(float));
-    layer.U_h = (float *)malloc(hidden_weight_size * sizeof(float));
-    layer.b_h = (float *)malloc(hidden_size * sizeof(float));
+    layer->W_hr = (float*)malloc(hidden_hidden_size * sizeof(float));
+    layer->W_hz = (float*)malloc(hidden_hidden_size * sizeof(float));
+    layer->W_hn = (float*)malloc(hidden_hidden_size * sizeof(float));
 
-    // 随机初始化权重和偏置
-    for (int i = 0; i < weight_size; i++) {
-        layer.W_z[i] = (float)rand() / RAND_MAX;
-        layer.W_r[i] = (float)rand() / RAND_MAX;
-        layer.W_h[i] = (float)rand() / RAND_MAX;
+    layer->b_ir = (float*)calloc(hidden_size, sizeof(float));
+    layer->b_iz = (float*)calloc(hidden_size, sizeof(float));
+    layer->b_in = (float*)calloc(hidden_size, sizeof(float));
+
+    layer->b_hr = (float*)calloc(hidden_size, sizeof(float));
+    layer->b_hz = (float*)calloc(hidden_size, sizeof(float));
+    layer->b_hn = (float*)calloc(hidden_size, sizeof(float));
+
+    // 初始化权重和偏置（可以根据需要使用更复杂的初始化方法）
+    for (int i = 0; i < input_hidden_size; i++) {
+        layer->W_ir[i] = layer->W_iz[i] = layer->W_in[i] = 0.1f; // 示例初始化
     }
-    for (int i = 0; i < hidden_weight_size; i++) {
-        layer.U_z[i] = (float)rand() / RAND_MAX;
-        layer.U_r[i] = (float)rand() / RAND_MAX;
-        layer.U_h[i] = (float)rand() / RAND_MAX;
-    }
-    for (int i = 0; i < hidden_size; i++) {
-        layer.b_z[i] = 0.1f;
-        layer.b_r[i] = 0.1f;
-        layer.b_h[i] = 0.1f;
+    for (int i = 0; i < hidden_hidden_size; i++) {
+        layer->W_hr[i] = layer->W_hz[i] = layer->W_hn[i] = 0.1f;
     }
 
     return layer;
 }
 
-// 释放 GRU 层内存
-void free_gru_layer(GRULayer *layer) {
-    free(layer->W_z);
-    free(layer->U_z);
-    free(layer->b_z);
-    free(layer->W_r);
-    free(layer->U_r);
-    free(layer->b_r);
-    free(layer->W_h);
-    free(layer->U_h);
-    free(layer->b_h);
+// 释放 GRU 层的内存
+void free_gru_layer(GRULayer* layer) {
+    free(layer->W_ir); free(layer->W_iz); free(layer->W_in);
+    free(layer->W_hr); free(layer->W_hz); free(layer->W_hn);
+    free(layer->b_ir); free(layer->b_iz); free(layer->b_in);
+    free(layer->b_hr); free(layer->b_hz); free(layer->b_hn);
+    free(layer);
+}
+
+Parameter* gru_load_params(GRULayer* layer, Parameter* params) {
+    int input_size = layer->input_size;
+    int hidden_size = layer->hidden_size;
+    int input_hidden_size = input_size * hidden_size;
+    int hidden_hidden_size = hidden_size * hidden_size;
+    assert(params[0].size == 3 * input_hidden_size);
+    assert(params[1].size == 3 * hidden_hidden_size);
+    assert(params[2].size == 3 * hidden_size);
+    assert(params[3].size == 3 * hidden_size);
+
+    memcpy(layer->W_ir, params[0].values, input_hidden_size * sizeof(float));
+    memcpy(layer->W_iz, params[0].values + input_hidden_size, input_hidden_size * sizeof(float));
+    memcpy(layer->W_in, params[0].values + 2 * input_hidden_size, input_hidden_size * sizeof(float));
+
+    memcpy(layer->W_hr, params[1].values, hidden_hidden_size * sizeof(float));
+    memcpy(layer->W_hz, params[1].values + hidden_hidden_size, hidden_hidden_size * sizeof(float));
+    memcpy(layer->W_hn, params[1].values + 2 * hidden_hidden_size, hidden_hidden_size * sizeof(float));
+
+    memcpy(layer->b_ir, params[2].values, hidden_size * sizeof(float));
+    memcpy(layer->b_iz, params[2].values + hidden_size, hidden_size * sizeof(float));
+    memcpy(layer->b_in, params[2].values + 2 * hidden_size, hidden_size * sizeof(float));
+
+    memcpy(layer->b_hr, params[3].values, hidden_size * sizeof(float));
+    memcpy(layer->b_hz, params[3].values + hidden_size, hidden_size * sizeof(float));
+    memcpy(layer->b_hn, params[3].values + 2 * hidden_size, hidden_size * sizeof(float));
+
+    return params + 4;
 }
 
 // GRU 前向传播
-void gru_forward(GRULayer *layer, float *x_t, float *h_prev, float *h_t) {
+Tensor* gru_forward(GRULayer* layer, Tensor* input, Tensor* hidden_state) {
+    // input shape: [seq_len, input_size]
+    // hidden_state shape: [hidden_size]
+    int input_size = layer->input_size;
     int hidden_size = layer->hidden_size;
+    int seq_len = input->shape[0];
+    assert(input_size == input->shape[1]);
+    assert(hidden_size == hidden_state->shape[0]);
 
-    float z_t[hidden_size];
-    float r_t[hidden_size];
-    float h_candidate[hidden_size];
-    float temp[hidden_size];
+    Tensor* output = create_tensor((int[]){input->shape[0], hidden_size}, 2);
 
-    // 计算更新门 z_t
-    matvec_mul(layer->W_z, x_t, z_t, hidden_size, layer->input_size);
-    matvec_mul(layer->U_z, h_prev, temp, hidden_size, hidden_size);
-    elementwise_add(z_t, temp, z_t, hidden_size);
-    elementwise_add(z_t, layer->b_z, z_t, hidden_size);
-    for (int i = 0; i < hidden_size; i++) {
-        z_t[i] = sigmoid(z_t[i]);
+    // 临时变量
+    float *r = (float*)malloc(hidden_size * sizeof(float));
+    float *z = (float*)malloc(hidden_size * sizeof(float));
+    float *n = (float*)malloc(hidden_size * sizeof(float));
+    float *h_new = (float*)malloc(hidden_size * sizeof(float));
+
+    for (int t = 0; t < seq_len; t++) {
+        float* x_t = input->data + t * input_size; // 当前时间步的输入
+        float* o_t = output->data + t * hidden_size; // 当前时间步的输出
+
+        // 计算重置门 r
+        for (int i = 0; i < hidden_size; i++) {
+            float Wx_r = 0.0f, Wh_r = 0.0f;
+            for (int j = 0; j < input_size; j++) {
+                Wx_r += x_t[j] * layer->W_ir[i * input_size + j];
+            }
+            for (int j = 0; j < hidden_size; j++) {
+                Wh_r += hidden_state->data[j] * layer->W_hr[i * hidden_size + j];
+            }
+            r[i] = sigmoid(Wx_r + Wh_r + layer->b_ir[i] + layer->b_hr[i]);
+        }
+
+        // 计算更新门 z
+        for (int i = 0; i < hidden_size; i++) {
+            float Wx_z = 0.0f, Wh_z = 0.0f;
+            for (int j = 0; j < input_size; j++) {
+                Wx_z += x_t[j] * layer->W_iz[i * input_size + j];
+            }
+            for (int j = 0; j < hidden_size; j++) {
+                Wh_z += hidden_state->data[j] * layer->W_hz[i * hidden_size + j];
+            }
+            z[i] = sigmoid(Wx_z + Wh_z + layer->b_iz[i] + layer->b_hz[i]);
+        }
+
+        // 计算候选隐藏状态 n
+        for (int i = 0; i < hidden_size; i++) {
+            float Wx_n = 0.0f, Wh_n = 0.0f;
+            for (int j = 0; j < input_size; j++) {
+                Wx_n += x_t[j] * layer->W_in[i * input_size + j];
+            }
+            for (int j = 0; j < hidden_size; j++) {
+                Wh_n += hidden_state->data[j] * layer->W_hn[i * hidden_size + j];
+            }
+            Wh_n += layer->b_hn[i];
+            Wh_n *= r[i];
+            n[i] = tanh_activation(Wx_n + Wh_n + layer->b_in[i]);
+        }
+
+        // 更新隐藏状态
+        for (int i = 0; i < hidden_size; i++) {
+            h_new[i] = (1.0f - z[i]) * n[i] + z[i] * hidden_state->data[i];
+        }
+
+        // 将新的隐藏状态保存到输出
+        memcpy(o_t, h_new, hidden_size * sizeof(float));
+        memcpy(hidden_state->data, h_new, hidden_size * sizeof(float));
     }
 
-    // 计算重置门 r_t
-    matvec_mul(layer->W_r, x_t, r_t, hidden_size, layer->input_size);
-    matvec_mul(layer->U_r, h_prev, temp, hidden_size, hidden_size);
-    elementwise_add(r_t, temp, r_t, hidden_size);
-    elementwise_add(r_t, layer->b_r, r_t, hidden_size);
-    for (int i = 0; i < hidden_size; i++) {
-        r_t[i] = sigmoid(r_t[i]);
-    }
+    // 释放临时内存
+    free(r); free(z); free(n); free(h_new);
 
-    // 计算候选隐藏状态 h_candidate
-    matvec_mul(layer->W_h, x_t, h_candidate, hidden_size, layer->input_size);
-    elementwise_mul(r_t, h_prev, temp, hidden_size);
-    matvec_mul(layer->U_h, temp, temp, hidden_size, hidden_size);
-    elementwise_add(h_candidate, temp, h_candidate, hidden_size);
-    elementwise_add(h_candidate, layer->b_h, h_candidate, hidden_size);
-    for (int i = 0; i < hidden_size; i++) {
-        h_candidate[i] = tanh_activation(h_candidate[i]);
-    }
-
-    // 计算当前隐藏状态 h_t
-    for (int i = 0; i < hidden_size; i++) {
-        h_t[i] = (1 - z_t[i]) * h_prev[i] + z_t[i] * h_candidate[i];
-    }
+    return output;
 }
-
-// int main() {
-//     int input_size = 3;
-//     int hidden_size = 4;
-
-//     // 创建 GRU 层
-//     GRULayer gru = create_gru_layer(input_size, hidden_size);
-
-//     // 定义输入和前一隐藏状态
-//     float x_t[3] = {1.0, 2.0, 3.0};
-//     float h_prev[4] = {0.0, 0.0, 0.0, 0.0};
-
-//     // 定义当前隐藏状态
-//     float h_t[4];
-
-//     // 前向传播
-//     gru_forward(&gru, x_t, h_prev, h_t);
-
-//     // 打印输出
-//     printf("Hidden State:\n");
-//     for (int i = 0; i < hidden_size; i++) {
-//         printf("%f ", h_t[i]);
-//     }
-//     printf("\n");
-
-//     // 释放内存
-//     free_gru_layer(&gru);
-
-//     return 0;
-// }

@@ -1,49 +1,84 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include "../include/linear.h"
+#include "../include/tensor.h"
+#include "../include/parser.h"
 
-// 定义线性层的结构
-typedef struct {
-    int input_size;
-    int output_size;
-    float *weights; // 权重矩阵 (input_size x output_size)
-    float *bias;    // 偏置向量 (output_size)
-} LinearLayer;
+// 创建全连接层
+LinearLayer* create_linear_layer(int input_size, int output_size) {
+    LinearLayer* layer = (LinearLayer*)malloc(sizeof(LinearLayer));
+    layer->input_size = input_size;
+    layer->output_size = output_size;
 
-// 初始化线性层
-LinearLayer create_linear_layer(int input_size, int output_size) {
-    LinearLayer layer;
-    layer.input_size = input_size;
-    layer.output_size = output_size;
+    // 分配权重和偏置
+    layer->weight = (float*)malloc(output_size * input_size * sizeof(float));
+    layer->bias = (float*)malloc(output_size * sizeof(float));
 
-    // 分配权重和偏置的内存
-    layer.weights = (float *)malloc(input_size * output_size * sizeof(float));
-    layer.bias = (float *)malloc(output_size * sizeof(float));
-
-    // 初始化权重和偏置为随机值（这里使用固定值示例）
-    for (int i = 0; i < input_size * output_size; i++) {
-        layer.weights[i] = (float)rand() / RAND_MAX; // 随机初始化
+    // 初始化权重和偏置为随机值或零（示例中随机值）
+    for (int i = 0; i < output_size * input_size; ++i) {
+        layer->weight[i] = (float)rand() / RAND_MAX - 0.5f; // 随机初始化
     }
-    for (int i = 0; i < output_size; i++) {
-        layer.bias[i] = 0.1f; // 偏置初始化为 0.1
+    for (int i = 0; i < output_size; ++i) {
+        layer->bias[i] = (float)rand() / RAND_MAX - 0.5f; // 随机初始化
     }
 
     return layer;
 }
 
-// 释放线性层的内存
-void free_linear_layer(LinearLayer *layer) {
-    free(layer->weights);
-    free(layer->bias);
+// 释放全连接层
+void free_linear_layer(LinearLayer* layer) {
+    if (layer) {
+        free(layer->weight);
+        free(layer->bias);
+        free(layer);
+    }
 }
 
-// 线性层的前向传播
-void linear_forward(LinearLayer *layer, float *input, float *output) {
-    for (int i = 0; i < layer->output_size; i++) {
-        output[i] = layer->bias[i]; // 初始化为偏置
-        for (int j = 0; j < layer->input_size; j++) {
-            output[i] += input[j] * layer->weights[j * layer->output_size + i];
+Parameter* linear_load_params(LinearLayer* layer, Parameter* params) {
+    int input_size = layer->input_size;
+    int output_size = layer->output_size;
+    assert(params[0].size == output_size * input_size);
+    assert(params[1].size == output_size);
+    memcpy(layer->weight, params[0].values, output_size * input_size * sizeof(float));
+    memcpy(layer->bias, params[1].values, output_size * sizeof(float));
+    return params + 2;
+}
+
+// 全连接层前向传播
+Tensor* linear_forward(LinearLayer* layer, Tensor* input) {
+    // 检查输入尺寸
+    if (input->shape[input->ndim - 1] != layer->input_size) {
+        fprintf(stderr, "Input size does not match Linear layer input_size.\n");
+        return NULL;
+    }
+
+    // 计算输出形状
+    int batch_size = input->size / layer->input_size;
+    int output_size = layer->output_size;
+
+    // 分配输出Tensor
+    Tensor* output = (Tensor*)malloc(sizeof(Tensor));
+    output->ndim = input->ndim;
+    output->shape = (int*)malloc(output->ndim * sizeof(int));
+    memcpy(output->shape, input->shape, (input->ndim - 1) * sizeof(int));
+    output->shape[input->ndim - 1] = output_size;
+    output->size = batch_size * output_size;
+    output->data = (float*)malloc(output->size * sizeof(float));
+
+    // 计算全连接层的输出
+    for (int b = 0; b < batch_size; ++b) {
+        for (int o = 0; o < output_size; ++o) {
+            float sum = layer->bias[o];
+            for (int i = 0; i < layer->input_size; ++i) {
+                sum += input->data[b * layer->input_size + i] * layer->weight[o * layer->input_size + i];
+            }
+            output->data[b * output_size + o] = sum;
         }
     }
+
+    return output;
 }
 
 // int main() {
