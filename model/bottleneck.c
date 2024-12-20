@@ -29,8 +29,18 @@ Parameter* bottleneck_load_params(BottleNeck *btnk, Parameter *params) {
 }
 
 Tensor *bottleneck_forward(BottleNeck *btnk, Tensor *input, Tensor *hidden_state) {
-    Tensor *mid = gru_forward(btnk->rnn, input, hidden_state);
-    Tensor *out = linear_forward(btnk->fc, mid);
-    delete_tensor(mid);
+    // input shape: [C, T, F]
+    Tensor *feats_in1 = permute(input, (int[]){1, 0, 2}); // [T, C, F]
+    int T = feats_in1->shape[0], C = feats_in1->shape[1], F = feats_in1->shape[2];
+    Tensor *feats_in2 = reshape(feats_in1, (int[]){T, C*F}, 2); // [T, C*F]
+    Tensor *gru_out = gru_forward(btnk->rnn, feats_in2, hidden_state);
+    Tensor *fc_out = linear_forward(btnk->fc, gru_out); // [T, C*F]
+    Tensor *fc_out1 = reshape(fc_out, (int[]){T, C, F}, 3);
+    Tensor *out = permute(fc_out1, (int[]){1, 0, 2});
+    delete_tensor(feats_in1);
+    delete_tensor(feats_in2);
+    delete_tensor(gru_out);
+    delete_tensor(fc_out);
+    delete_tensor(fc_out1);
     return out;
 }

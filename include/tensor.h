@@ -35,6 +35,11 @@ Tensor* concatenate(Tensor* tensor1, Tensor* tensor2, int dim);
 Tensor* permute(const Tensor* input, const int* permute_order);
 // reshape操作
 Tensor* reshape(const Tensor* input, const int* new_shape, int new_ndim);
+// pad操作 pad: pad 2 dimention: [pad_bottom, pad_top, pad_left, pad_right]
+Tensor* tensor_pad(Tensor* input, int* pad);
+
+Tensor *tensor_add(Tensor* a, Tensor *b);
+Tensor *tensor_mul(Tensor* a, Tensor *b);
 
 // 矩阵运算
 

@@ -5,6 +5,8 @@
 #include "elu.h"
 #include "gru.h"
 #include "linear.h"
+#include "module.h"
+#include "sigmoid.h"
 
 typedef struct {
     int in_channels;
@@ -26,10 +28,25 @@ typedef struct {
 } BottleNeck;
 
 typedef struct {
+    int in_channels;
+    int out_channels;
+    int use_res; // 0 1
+    int is_last; // 0 1
+    SkipBlock* skip;
+    ResidualBlock* resblock;
+    SubPixelConv* subpixconv;
+    BatchNormLayer* bn;
+    ELULayer* act;
+} DecoderBlock;
+
+typedef struct {
     int hidden_dim;
     EncoderBlock *mic_enc[4];
     EncoderBlock *ref_enc;
     BottleNeck *bottleneck;
+    DecoderBlock *dec[4];
+    LinearLayer *fc;
+    SigmoidLayer *sigmoid;
 } RNNVQE;
 
 EncoderBlock *create_encoder_block(int in_channels, int out_channels);
@@ -41,6 +58,11 @@ BottleNeck* create_bottleneck(int hidden_dim);
 void free_bottleneck(BottleNeck *btnk);
 Parameter* bottleneck_load_params(BottleNeck *btnk, Parameter *params);
 Tensor *bottleneck_forward(BottleNeck *btnk, Tensor *input, Tensor *hidden_state);
+
+DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_res, int is_last);
+void free_decoder_block(DecoderBlock* block);
+Parameter* decoderblock_load_params(DecoderBlock* block, Parameter* params);
+Tensor* decoderblock_forward(DecoderBlock* block, Tensor* en, Tensor* de);
 
 RNNVQE* create_rnnvqe();
 Parameter* rnnvqe_load_params(RNNVQE *model, ModelStateDict *sd);

@@ -26,9 +26,11 @@ Tensor* create_tensor(int* shape, int ndim) {
 
 // 释放张量所占的内存空间
 void delete_tensor(Tensor *tensor) {
-    free(tensor->data);
-    free(tensor->shape);
-    free(tensor);
+    if (tensor) {
+        free(tensor->data);
+        free(tensor->shape);
+        free(tensor);
+    }
 }
 
 // 初始化张量数据
@@ -334,6 +336,7 @@ Tensor* reshape(const Tensor* input, const int* new_shape, int new_ndim) {
     // 检查新形状是否合法
     if (!is_valid_shape(input, new_shape, new_ndim)) {
         fprintf(stderr, "Invalid shape: Total elements do not match.\n");
+        assert(0);
         return NULL;
     }
 
@@ -356,26 +359,78 @@ Tensor* reshape(const Tensor* input, const int* new_shape, int new_ndim) {
     return output;
 }
 
-// 逐元素加法
-void elementwise_add(float *a, float *b, float *out, int size) {
-    for (int i = 0; i < size; i++) {
-        out[i] = a[i] + b[i];
-    }
-}
+// Tensor的Pad函数
+Tensor* tensor_pad(Tensor* input, int* pad) {
+    int ndim = input->ndim;
+    // assert(ndim * 2 == sizeof(pad) / sizeof(pad[0]));
 
-// 逐元素乘法
-void elementwise_mul(float *a, float *b, float *out, int size) {
-    for (int i = 0; i < size; i++) {
-        out[i] = a[i] * b[i];
+    // 计算新形状
+    int* new_shape = (int*)malloc(ndim * sizeof(int));
+    int new_size = 1;
+    for (int i = 0; i < ndim; i++) {
+        new_shape[i] = input->shape[i] + pad[2 * i] + pad[2 * i + 1];
+        new_size *= new_shape[i];
     }
-}
 
-// 矩阵向量乘法
-void matvec_mul(float *mat, float *vec, float *out, int rows, int cols) {
-    for (int i = 0; i < rows; i++) {
-        out[i] = 0;
-        for (int j = 0; j < cols; j++) {
-            out[i] += mat[i * cols + j] * vec[j];
+    // 创建新Tensor
+    Tensor* output = create_tensor(new_shape, ndim);
+    memset(output->data, 0, output->size * sizeof(float));
+
+    // 填充数据
+    int* old_indices = (int*)calloc(ndim, sizeof(int));
+    int* new_indices = (int*)calloc(ndim, sizeof(int));
+    for (int i = 0; i < input->size; i++) {
+        // 计算旧Tensor中的多维索引
+        int remaining = i;
+        for (int j = ndim - 1; j >= 0; j--) {
+            old_indices[j] = remaining % input->shape[j];
+            remaining /= input->shape[j];
         }
+
+        // 计算新Tensor中的多维索引
+        for (int j = 0; j < ndim; j++) {
+            new_indices[j] = old_indices[j] + pad[2 * j];
+        }
+
+        // 计算新Tensor中的线性索引
+        int new_linear_index = 0;
+        int stride = 1;
+        for (int j = ndim - 1; j >= 0; j--) {
+            new_linear_index += new_indices[j] * stride;
+            stride *= new_shape[j];
+        }
+
+        // 复制数据
+        output->data[new_linear_index] = input->data[i];
     }
+
+    // 释放临时内存
+    free(old_indices);
+    free(new_indices);
+    free(new_shape);
+
+    return output;
+}
+
+//
+Tensor *tensor_add(Tensor* a, Tensor *b) {
+    assert(a->ndim == b->ndim);
+    for (int i = 0; i < a->ndim; i ++ ) {
+        assert(a->shape[i] == b->shape[i]);
+    }
+    Tensor *out = create_tensor(a->shape, a->ndim);
+    for (int i = 0; i < a->size; i ++ )
+        out->data[i] = a->data[i] + b->data[i];
+    return out;
+}
+
+Tensor *tensor_mul(Tensor* a, Tensor *b) {
+    assert(a->ndim == b->ndim);
+    for (int i = 0; i < a->ndim; i ++ ) {
+        assert(a->shape[i] == b->shape[i]);
+    }
+    Tensor *out = create_tensor(a->shape, a->ndim);
+    for (int i = 0; i < a->size; i ++ )
+        out->data[i] = a->data[i] * b->data[i];
+    return out;
 }

@@ -151,16 +151,6 @@ class BottleNeck(nn.Module):
         x = x.reshape(B, T, -1).contiguous()
         x, _ = self.rnn(x)
         x = self.fc(x)
-
-        print(f'out mic cat shape: {x.shape}')
-        out_f = x[0, :, :]
-        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/after_fc_py.txt"
-        with open(output_file, "w") as f:
-            for row in out_f:
-                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-                f.write(formatted_row + "\n")
-        sys.exit()
-
         x = x.reshape(B, T, C, -1).permute(0, 2, 1, 3)
         return x 
 
@@ -308,6 +298,15 @@ class DeepVQES(nn.Module):
         gains = self.fc(feats)
         gains = torch.squeeze(gains, 1)
         gains = self.sigmoid(gains)
+
+        print(f'gains shape: {gains.shape}')
+        out_f = gains[0, :, :]
+        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/output_py.txt"
+        with open(output_file, "w") as f:
+            for row in out_f:
+                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
+                f.write(formatted_row + "\n")
+        sys.exit()
 
         out_specs, out_wavs, _, _ = self.rnnoise_module.inverse_transform(mic, gains)
         out_wavs = F.pad(out_wavs, (0, wav_length - out_wavs.shape[-1]))

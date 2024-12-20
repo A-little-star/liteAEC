@@ -134,6 +134,55 @@
 //     return 0;
 // }
 
+// 测试pad
+// int main() {
+//     int shape_in[2] = {3, 4};
+//     Tensor *t = create_tensor(shape_in, 2);
+//     print_tensor_shape(t);
+//     printf("%d\n", t->size);
+//     float data[] = {
+//         1, 2, 3, 4,
+//         4, 5, 6, 7,
+//         8, 9, 10, 11
+//     };
+//     init_tensor(t, data);
+//     print_tensor(t);
+//     printf("\n");
+//     int pad[4] = {1, 0, 1, 2};
+//     Tensor* o = tensor_pad(t, pad);
+//     print_tensor(o);
+//     return 0;
+// }
+
+// 测试permute
+// int main() {
+//     int shape_in[2] = {3, 4};
+//     Tensor *t = create_tensor(shape_in, 2);
+//     print_tensor_shape(t);
+//     printf("%d\n", t->size);
+//     float data[] = {
+//         1, 2, 3, 4,
+//         4, 5, 6, 7,
+//         8, 9, 10, 11
+//     };
+//     init_tensor(t, data);
+//     print_tensor(t);
+
+//     Tensor* o = permute(t, (int[]){1, 0});
+//     print_tensor(o);
+//     return 0;
+// }
+
+// 测试decoder
+// int main() {
+//     Tensor *input = create_tensor((int[]){8, 70, 55}, 3);
+//     Tensor *mid = create_tensor((int[]){8, 70, 54}, 3);
+//     DecoderBlock* dec1 = create_decoder_block(8, 1, 1, 1);
+//     Tensor* output = decoderblock_forward(dec1, input, mid);
+//     print_tensor_shape(output);
+//     return 0;
+// }
+
 // 测试整个模型
 int main() {
     // *** stage 1: 读取文件 ***
@@ -204,26 +253,26 @@ int main() {
     // Tensor *mid2 = batchnorm_forward(bn, mid1);
     // Tensor *outputs = elu_forward(elu, mid2);
     // Tensor *outputs = encoderblock_forward(enc1, features_mic);
-    Tensor *outputs = rnnvqe_forward(model, features_mic, features_mic);
+    Tensor *output = rnnvqe_forward(model, features_mic, features_mic);
     printf("output shape:\n");
-    print_tensor_shape(outputs);
-    // Tensor *o1 = tensor_slice(outputs, (int[]){0, 0, 0}, (int[]){1, outputs->shape[1], outputs->shape[2]});
-    // print_tensor_shape(o1);
-    // Tensor *o2 = tensor_squeeze(o1, 0);
-    // Tensor *o3 = tensor_squeeze(features_mic, 0);
-    // print_tensor_shape(o2);
+    print_tensor_shape(output);
+    // Tensor *feats_in1 = permute(output, (int[]){1, 0, 2}); // [T, C, F]
+    // int T = feats_in1->shape[0], C = feats_in1->shape[1], F = feats_in1->shape[2];
+    // Tensor *outputs = reshape(feats_in1, (int[]){T, C*F}, 2); // [T, C*F]
+    Tensor *o1 = tensor_slice(output, (int[]){0, 0, 0}, (int[]){1, output->shape[1], output->shape[2]});
+    Tensor *o2 = tensor_squeeze(o1, 0);
 
-    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/debug.txt";
+    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/output.txt";
     FILE *file = fopen(output_file, "w");
     if (!file) {
         perror("Error opening output file");
         return 1;
     }
 
-    int T = outputs->shape[0], F = outputs->shape[1];
-    for (int t = 0; t < T; t ++ ) {
-        for (int f = 0; f < F; f ++ ) {
-            float tfbin = tensor_get(outputs, (int[]){t, f});
+    int h = o2->shape[0], w = o2->shape[1];
+    for (int t = 0; t < h; t ++ ) {
+        for (int f = 0; f < w; f ++ ) {
+            float tfbin = tensor_get(o2, (int[]){t, f});
             fprintf(file, "%f ", tfbin);
         }
         fprintf(file, "\n");

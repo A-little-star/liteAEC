@@ -50,8 +50,15 @@ Parameter* conv2d_load_params(Conv2DLayer* layer, Parameter *params) {
     float *bias = params[1].values;
 
     int weight_size = out_channels * in_channels * kernel_h * kernel_w / group;
-    assert(weight_size == params[0].size);
-    assert(out_channels == params[1].size);
+    
+    if (weight_size != params[0].size) {
+        printf("load parameters error: %s\n", params[0].name);
+        assert(weight_size == params[0].size);
+    }
+    if (out_channels != params[1].size) {
+        printf("load parameters error: %s\n", params[1].name);
+        assert(out_channels == params[1].size);
+    }
 
     // 初始化权重和偏置为随机值
     for (int i = 0; i < weight_size; i++) {
@@ -96,7 +103,7 @@ Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input) {
     int in_c = input->shape[0], in_h = input->shape[1], in_w = input->shape[2];
     if (in_c != in_channels) {
         fprintf(stderr, "Conv2d layer's input channels doesn't match the input tensor's channels.\n");
-        return;
+        assert(0);
     };
 
     // 每个组的输入和输出通道数
