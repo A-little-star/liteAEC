@@ -299,15 +299,6 @@ class DeepVQES(nn.Module):
         gains = torch.squeeze(gains, 1)
         gains = self.sigmoid(gains)
 
-        print(f'gains shape: {gains.shape}')
-        out_f = gains[0, :, :]
-        output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/output_py.txt"
-        with open(output_file, "w") as f:
-            for row in out_f:
-                formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-                f.write(formatted_row + "\n")
-        sys.exit()
-
         out_specs, out_wavs, _, _ = self.rnnoise_module.inverse_transform(mic, gains)
         out_wavs = F.pad(out_wavs, (0, wav_length - out_wavs.shape[-1]))
         return {
@@ -340,8 +331,7 @@ def test_model():
     mic, sr = sf.read("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav")
     ref, sr = sf.read("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav")
     e, y = pfdkf(ref, mic)
-    min_len = min(mic.shape[-1], ref.shape[-1], e.shape[-1], y.shape[-1]) // 100
-    min_len = 18000
+    min_len = min(mic.shape[-1], ref.shape[-1], e.shape[-1], y.shape[-1])
     mic = mic[:min_len]
     ref = ref[:min_len]
     e = e[:min_len]
@@ -349,21 +339,10 @@ def test_model():
 
     mic = torch.from_numpy(mic).unsqueeze(0)
     y = torch.from_numpy(y).unsqueeze(0)
-    outputs = model(mic, mic)["wavs"]
+    outputs = model(mic, y)["wavs"]
     print(f'output shape: {outputs.shape}')
-    outputs_features = outputs[0, 0, :, :]
-    # output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/out_py.txt"
-    # with open(output_file, "w") as f:
-    #     for row in outputs_features:
-    #         formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-    #         f.write(formatted_row + "\n")
-    # output_file_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/bfcc_y_py.txt"
-    # with open(output_file_y, "w") as f:
-    #     for row in features_y:
-    #         formatted_row = " ".join(f"{value:.6f}" for value in row.tolist())
-    #         f.write(formatted_row + "\n")
-
-    # print(f"Tensor has been written to {output_file}.")
+    outputs = outputs.squeeze(0).detach().numpy()
+    sf.write("/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/out_py.wav", outputs, 16000)
 
 
 if __name__ == "__main__":

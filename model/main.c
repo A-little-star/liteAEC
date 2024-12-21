@@ -183,6 +183,32 @@
 //     return 0;
 // }
 
+// 测试正逆变换
+// int main() {
+//     const char *filename = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
+//     int num_samples;                        // 样本数
+//     int sample_rate;                        // 采样率
+//     float *wav_ = read_wav_file(filename, &num_samples, &sample_rate);
+//     wav_norm(wav_, num_samples);
+//     Tensor *wav = create_tensor((int[]){num_samples}, 1);
+//     init_tensor(wav, wav_);
+//     int length = num_samples / FRAME_SIZE - 1;
+//     Tensor* cspecs = create_tensor((int[]){2, length, FREQ_SIZE}, 3);
+//     Tensor* features = create_tensor((int[]){1, length, NB_FEATURES}, 3);
+//     feature_extract(wav, cspecs, features);
+
+//     const char *filename_out = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/test.wav";
+//     float* out_wav = istft(cspecs, num_samples);
+//     wav_invnorm(out_wav, num_samples);
+//     if (write_wav_file(filename_out, out_wav, num_samples, sample_rate, 1, 16) == 0) {
+//         printf("e WAV file written successfully.\n");
+//     } else {
+//         printf("Failed to write WAV file.\n");
+//     }
+
+//     return 0;
+// }
+
 // 测试整个模型
 int main() {
     // *** stage 1: 读取文件 ***
@@ -201,8 +227,8 @@ int main() {
     printf("stage 1 executed successfully.\n");
 
     // *** stage 2: 线性滤波与特征提取 ***
-    num_samples = 18000;  // 目前只处理18000个采样点
-    // pfdkf(ref_, mic_, e_, y_, num_samples);
+    // num_samples = 18000;  // 目前只处理18000个采样点
+    pfdkf(ref_, mic_, e_, y_, num_samples);
 
     wav_norm(mic_, num_samples);
     wav_norm(ref_, num_samples);
@@ -253,32 +279,45 @@ int main() {
     // Tensor *mid2 = batchnorm_forward(bn, mid1);
     // Tensor *outputs = elu_forward(elu, mid2);
     // Tensor *outputs = encoderblock_forward(enc1, features_mic);
-    Tensor *output = rnnvqe_forward(model, features_mic, features_mic);
-    printf("output shape:\n");
-    print_tensor_shape(output);
+    Tensor *gains = rnnvqe_forward(model, features_mic, features_y);
+    printf("gains shape:\n");
+    print_tensor_shape(gains);
+
+    float* out_wav = (float*)malloc(num_samples*sizeof(float));
+    post_process(cspecs_mic, gains, out_wav);
+
+    wav_invnorm(out_wav, num_samples);
+
+    const char *filename_out = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/test_last.wav";
+    if (write_wav_file(filename_out, out_wav, num_samples, sample_rate, 1, 16) == 0) {
+        printf("e WAV file written successfully.\n");
+    } else {
+        printf("Failed to write WAV file.\n");
+    }
+
     // Tensor *feats_in1 = permute(output, (int[]){1, 0, 2}); // [T, C, F]
     // int T = feats_in1->shape[0], C = feats_in1->shape[1], F = feats_in1->shape[2];
     // Tensor *outputs = reshape(feats_in1, (int[]){T, C*F}, 2); // [T, C*F]
-    Tensor *o1 = tensor_slice(output, (int[]){0, 0, 0}, (int[]){1, output->shape[1], output->shape[2]});
-    Tensor *o2 = tensor_squeeze(o1, 0);
+    // Tensor *o1 = tensor_slice(output, (int[]){0, 0, 0}, (int[]){1, output->shape[1], output->shape[2]});
+    // Tensor *o2 = tensor_squeeze(o1, 0);
 
-    const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/output.txt";
-    FILE *file = fopen(output_file, "w");
-    if (!file) {
-        perror("Error opening output file");
-        return 1;
-    }
+    // const char *output_file = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_txt/output.txt";
+    // FILE *file = fopen(output_file, "w");
+    // if (!file) {
+    //     perror("Error opening output file");
+    //     return 1;
+    // }
 
-    int h = o2->shape[0], w = o2->shape[1];
-    for (int t = 0; t < h; t ++ ) {
-        for (int f = 0; f < w; f ++ ) {
-            float tfbin = tensor_get(o2, (int[]){t, f});
-            fprintf(file, "%f ", tfbin);
-        }
-        fprintf(file, "\n");
-    }
+    // int h = o2->shape[0], w = o2->shape[1];
+    // for (int t = 0; t < h; t ++ ) {
+    //     for (int f = 0; f < w; f ++ ) {
+    //         float tfbin = tensor_get(o2, (int[]){t, f});
+    //         fprintf(file, "%f ", tfbin);
+    //     }
+    //     fprintf(file, "\n");
+    // }
 
-    fclose(file); // 关闭文件
+    // fclose(file); // 关闭文件
 
     return 0;
 }
