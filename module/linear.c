@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../include/linear.h"
+#include "../include/module.h"
 #include "../include/tensor.h"
 #include "../include/parser.h"
 

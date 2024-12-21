@@ -4,7 +4,6 @@
 #include <assert.h>
 #include "../include/parser.h"
 #include "../include/tensor.h"
-#include "../include/conv2d.h"
 #include "../include/module.h"
 
 SubPixelConv* create_subpixelconv(int in_channels, int out_channels) {

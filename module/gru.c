@@ -5,7 +5,7 @@
 #include <assert.h>
 
 #include "../include/tensor.h"
-#include "../include/gru.h"
+#include "../include/module.h"
 #include "../include/act_func.h"
 #include "../include/parser.h"
 

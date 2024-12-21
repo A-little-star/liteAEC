@@ -4,7 +4,6 @@
 #include <assert.h>
 #include "../include/parser.h"
 #include "../include/tensor.h"
-#include "../include/conv2d.h"
 #include "../include/module.h"
 
 SkipBlock* create_skipblock(int hidden_channels) {

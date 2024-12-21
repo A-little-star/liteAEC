@@ -4,7 +4,7 @@
 #include <assert.h>
 #include "../include/parser.h"
 #include "../include/tensor.h"
-#include "../include/conv2d.h"
+#include "../include/module.h"
 
 // 创建卷积层
 Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "../include/tensor.h"
 #include "../include/act_func.h"
-#include "../include/sigmoid.h"
+#include "../include/module.h"
 
 SigmoidLayer* create_sigmoid_layer() {
     return (SigmoidLayer*)malloc(sizeof(SigmoidLayer));

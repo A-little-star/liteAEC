@@ -2,18 +2,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include "../include/tensor.h"
-#include "../include/gru.h"
-#include "../include/conv2d.h"
-#include "../include/elu.h"
-#include "../include/linear.h"
-#include "../include/depthwise_conv2d.h"
 #include "../include/wavreader.h"
 #include "../include/stft.h"
 #include "../include/typedef.h"
 #include "../include/pfdkf.h"
 #include "../include/parser.h"
-#include "../include/batchnorm.h"
-#include "../include/elu.h"
 #include "../include/model.h"
 
 // 测试wavreader.c

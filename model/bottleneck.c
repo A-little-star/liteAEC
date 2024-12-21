@@ -1,10 +1,6 @@
 #include <stdlib.h>
-#include "../include/depthwise_conv2d.h"
-#include "../include/batchnorm.h"
-#include "../include/elu.h"
 #include "../include/tensor.h"
 #include "../include/model.h"
-#include "../include/linear.h"
 
 BottleNeck* create_bottleneck(int hidden_dim) {
     BottleNeck *btnk = (BottleNeck*)malloc(sizeof(BottleNeck));

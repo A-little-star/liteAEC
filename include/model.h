@@ -1,12 +1,6 @@
 #ifndef MODEL_H
 #define MODEL_H
-#include "depthwise_conv2d.h"
-#include "batchnorm.h"
-#include "elu.h"
-#include "gru.h"
-#include "linear.h"
 #include "module.h"
-#include "sigmoid.h"
 
 typedef struct {
     int in_channels;

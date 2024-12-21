@@ -3,7 +3,7 @@
 #include <math.h>
 #include <assert.h>
 #include "../include/tensor.h"
-#include "../include/elu.h"
+#include "../include/module.h"
 
 // 创建 ELU 层
 ELULayer* create_elu_layer(float alpha) {

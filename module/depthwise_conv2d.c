@@ -1,9 +1,9 @@
-#include "../include/conv2d.h"
-#include "../include/depthwise_conv2d.h"
-#include "../include/parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/tensor.h"
+#include "../include/module.h"
+#include "../include/parser.h"
 
 DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_channels,
                                 int kernel_h, int kernel_w,

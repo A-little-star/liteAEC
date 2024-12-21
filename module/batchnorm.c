@@ -4,7 +4,7 @@
 #include <math.h>
 #include <assert.h>
 #include "../include/tensor.h"
-#include "../include/batchnorm.h"
+#include "../include/module.h"
 #include "../include/parser.h"
 
 // 创建 BatchNorm 层

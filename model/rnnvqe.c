@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "../include/depthwise_conv2d.h"
-#include "../include/batchnorm.h"
-#include "../include/elu.h"
 #include "../include/tensor.h"
 #include "../include/model.h"
 
