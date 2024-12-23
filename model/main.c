@@ -205,6 +205,7 @@
 
 // 测试整个模型
 // int main() {
+//     // 非流式推理代码
 //     // *** stage 1: 读取文件 ***
 //     const char *filename_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
 //     const char *filename_ref = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav";
@@ -281,6 +282,7 @@
 
 // 测试流式推理
 int main() {
+    // 流式推理代码
     // *** stage 1: 读取文件 ***
     const char *filename_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
     const char *filename_ref = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav";
