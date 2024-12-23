@@ -23,6 +23,9 @@ typedef struct {
     // 权重和偏置
     float *weights; // 权重: [out_channels, in_channels, kernel_h, kernel_w]
     float *bias;    // 偏置: [out_channels]
+
+    int stream;    // 取值0/1，是否流式推理
+    Tensor *buffer; // 缓冲区，流式推理时存放过去的帧信息（只在stream=1时有意义）
 } Conv2DLayer;
 
 // GRU层定义
@@ -93,7 +96,7 @@ Tensor* linear_forward(LinearLayer* layer, Tensor* input);
 
 // 创建卷积层
 Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w,
-                                int padding_h, int padding_w, int group);
+                                int padding_h, int padding_w, int group, int stream);
 Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input);
 Parameter* conv2d_load_params(Conv2DLayer* layer, Parameter *params);
 void free_conv2d_layer(Conv2DLayer *layer);
@@ -117,7 +120,7 @@ void free_sigmoid_layer(SigmoidLayer* layer);
 Tensor* sigmoid_forward(SigmoidLayer* layer, Tensor* input);
 
 DepthwiseConv2DLayer* create_depthwise_conv2d_layer(
-    int in_channels, int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w);
+    int in_channels, int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w, int stream);
 Parameter* depthwise_conv2d_load_params(DepthwiseConv2DLayer *layer, Parameter *params);
 void free_depthwise_conv2d_layer(DepthwiseConv2DLayer *layer);
 Tensor* depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor *input);
@@ -132,7 +135,7 @@ void free_subpixelconv(SubPixelConv *block);
 Parameter* subpixelconv_load_params(SubPixelConv* block, Parameter* params);
 Tensor* subpixelconv_forward(SubPixelConv* block, Tensor* input);
 
-ResidualBlock* create_residualblock(int hidden_channels);
+ResidualBlock* create_residualblock(int hidden_channels, int stream);
 void free_residualblock(ResidualBlock* block);
 Parameter* residualblock_load_params(ResidualBlock* block, Parameter* params);
 Tensor* residualblock_forward(ResidualBlock* block, Tensor* input);

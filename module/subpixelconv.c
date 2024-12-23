@@ -15,7 +15,7 @@ SubPixelConv* create_subpixelconv(int in_channels, int out_channels) {
         1, 1, 
         1, 1, 
         0, 0,
-        1
+        1, 0
     );
     return block;
 }

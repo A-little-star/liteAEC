@@ -1,3 +1,4 @@
+/* 本文件记录所有测试代码 */ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -8,7 +9,6 @@
 #include "../include/pfdkf.h"
 #include "../include/parser.h"
 #include "../include/model.h"
-#include "../include/rnnoise.h"
 
 // 测试wavreader.c
 // int main() {
@@ -278,97 +278,3 @@
 
 //     return 0;
 // }
-
-// 测试流式推理
-int main() {
-    // *** stage 1: 读取文件 ***
-    const char *filename_mic = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/mic.wav";
-    const char *filename_ref = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/ref.wav";
-    const char *filename_e = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/e.wav";
-    const char *filename_y = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/y.wav";
-    int num_samples;                        // 样本数
-    int sample_rate;                        // 采样率
-    float *mic_ = read_wav_file(filename_mic, &num_samples, &sample_rate);
-    float *ref_ = read_wav_file(filename_ref, &num_samples, &sample_rate);
-
-    float *e_ = (float*)calloc(num_samples, sizeof(float));
-    float *y_ = (float*)calloc(num_samples, sizeof(float));
-
-    printf("stage 1 executed successfully.\n");
-
-    // *** stage 2: 读取模型参数并解析 ***
-
-    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/model_weights.json";
-    ModelStateDict *sd = parse_json_to_parameters(cpt);
-    printf("stage 3 executed successfully.\n");
-
-    // *** stage 3: 构建模型并加载模型参数 ***
-
-    RNNVQE *model = create_rnnvqe(1);  // 输入参数为stream，为1是流式推理，为0时非流式整句推理
-    Parameter *params = sd->params;
-    rnnvqe_load_params(model, sd);
-    free_model_state_dict(sd);
-    printf("stage 4 executed successfully.\n");
-
-    // *** stage 5: 模型推理 ***
-
-    int N = 10;
-    int M = 256;
-    float A = 0.999;
-    float P_initial = 10.0;
-
-    PFDKF *filter = init_pfdkf(N, M, A, P_initial);
-
-    Tensor* hidden_state = create_tensor((int[]){model->hidden_dim}, 1);
-    for (int i = 0; i < hidden_state->size; i ++ ) hidden_state->data[i] = 0;
-
-    DenoiseState* st_mic = rnnoise_create();
-    DenoiseState* st_y = rnnoise_create();
-    DenoiseState* st_out = rnnoise_create();
-
-    int win_len = WINDOW_SIZE;
-    int hop_len = FRAME_SIZE;
-    Tensor *mic = create_tensor((int[]){win_len}, 1);
-    Tensor *y = create_tensor((int[]){win_len}, 1);
-    Tensor* cspecs_mic = create_tensor((int[]){2, 1, FREQ_SIZE}, 3);
-    Tensor* cspecs_y = create_tensor((int[]){2, 1, FREQ_SIZE}, 3);
-    Tensor* features_mic = create_tensor((int[]){1, 1, NB_FEATURES}, 3);
-    Tensor* features_y = create_tensor((int[]){1, 1, NB_FEATURES}, 3);
-    float* out_wav = (float*)malloc(num_samples*sizeof(float));
-    for (int s = 0, num_frame = 0; s + win_len < num_samples; s += hop_len, num_frame ++ ) {
-        if (s == 0) {
-            // 先把第一个256的线性滤波做好
-            filt(filter, ref_, mic_, e_, y_);
-            update(filter);
-        }
-        filt(filter, mic_+s+hop_len, ref_+s+hop_len, e_+s+hop_len, y_+s+hop_len);
-        update(filter);
-        if (s == 0) {
-            wav_norm(mic_, win_len);
-            wav_norm(y_, win_len);
-        } else {
-            wav_norm(mic_+s+hop_len, hop_len);
-            wav_norm(y_+s+hop_len, hop_len);
-        }
-        init_tensor(mic, mic_ + s);
-        init_tensor(y, y_ + s);
-        feature_extract_frame(mic, cspecs_mic, features_mic, st_mic);
-        feature_extract_frame(y, cspecs_y, features_y, st_y);
-        Tensor* gains_frame = rnnvqe_forward(model, features_mic, features_y, hidden_state);
-        post_process_frame(cspecs_mic, gains_frame, out_wav + s, st_out);
-        wav_invnorm(out_wav+s, hop_len);
-    }
-
-    printf("stage 5 executed successfully.\n");
-
-    // *** stage 5: 写入文件 ***
-    const char *filename_out = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/out_stream.wav";
-    if (write_wav_file(filename_out, out_wav, num_samples, sample_rate, 1, 16) == 0) {
-        printf("e WAV file written successfully.\n");
-    } else {
-        printf("Failed to write WAV file.\n");
-    }
-    printf("stage 6 executed successfully.\n");
-
-    return 0;
-}

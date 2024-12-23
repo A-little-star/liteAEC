@@ -43,7 +43,7 @@ typedef struct {
     SigmoidLayer *sigmoid;
 } RNNVQE;
 
-EncoderBlock *create_encoder_block(int in_channels, int out_channels);
+EncoderBlock *create_encoder_block(int in_channels, int out_channels, int stream);
 void free_encoder_block(EncoderBlock *block);
 Parameter* encoderblock_load_params(EncoderBlock *block, Parameter *params);
 Tensor *encoderblock_forward(EncoderBlock *block, Tensor *input);
@@ -53,14 +53,14 @@ void free_bottleneck(BottleNeck *btnk);
 Parameter* bottleneck_load_params(BottleNeck *btnk, Parameter *params);
 Tensor *bottleneck_forward(BottleNeck *btnk, Tensor *input, Tensor *hidden_state);
 
-DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_res, int is_last);
+DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_res, int is_last, int stream);
 void free_decoder_block(DecoderBlock* block);
 Parameter* decoderblock_load_params(DecoderBlock* block, Parameter* params);
 Tensor* decoderblock_forward(DecoderBlock* block, Tensor* en, Tensor* de);
 
-RNNVQE* create_rnnvqe();
+RNNVQE* create_rnnvqe(int stream);
 Parameter* rnnvqe_load_params(RNNVQE *model, ModelStateDict *sd);
 void free_rnnvqe(RNNVQE *model);
-Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref);
+Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref, Tensor* hidden_state);
 
 #endif

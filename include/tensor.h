@@ -18,7 +18,7 @@ void delete_tensor(Tensor *tensor);
 // 初始化张量数据
 void init_tensor(Tensor* tensor, float* values);
 // 打印张量的形状
-void print_tensor_shape(Tensor* tensor);
+void print_tensor_shape(Tensor* tensor, const char *name);
 // 打印张量数据
 void print_tensor(const Tensor* tensor);
 // 修改Tensor某位置的值

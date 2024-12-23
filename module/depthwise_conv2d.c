@@ -8,7 +8,7 @@
 DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_channels,
                                 int kernel_h, int kernel_w,
                                 int stride_h, int stride_w,
-                                int padding_h, int padding_w) {
+                                int padding_h, int padding_w, int stream) {
     DepthwiseConv2DLayer* layer = (DepthwiseConv2DLayer*)malloc(sizeof(DepthwiseConv2DLayer));
     layer->in_channels = in_channels;
     layer->out_channels = out_channels;
@@ -24,14 +24,14 @@ DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_cha
         kernel_h, kernel_w, 
         stride_h, stride_w, 
         padding_h, padding_w, 
-        in_channels
+        in_channels, stream
     );
     layer->point_conv = create_conv2d_layer(
         in_channels, out_channels,
         1, 1,
         1, 1, 
         0, 0,
-        1
+        1, stream
     );
     return layer;
 };

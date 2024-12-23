@@ -15,21 +15,10 @@ typedef struct {
   float lastg[NB_BANDS];
 } DenoiseState;
 
-int rnnoise_get_size() {
-  return sizeof(DenoiseState);
-}
+int rnnoise_get_size();
 
-int rnnoise_init(DenoiseState *st) {
-  memset(st, 0, sizeof(*st));
+int rnnoise_init(DenoiseState *st);
 
-  return 0;
-}
-
-DenoiseState *rnnoise_create() {
-  DenoiseState *st;
-  st = (DenoiseState*)malloc(rnnoise_get_size());
-  rnnoise_init(st);
-  return st;
-}
+DenoiseState *rnnoise_create();
 
 #endif

@@ -18,6 +18,22 @@ typedef struct {
 
 CommonState common;
 
+int rnnoise_get_size() {
+    return sizeof(DenoiseState);
+};
+
+int rnnoise_init(DenoiseState *st) {
+    memset(st, 0, sizeof(*st));
+    return 0;
+};
+
+DenoiseState *rnnoise_create() {
+    DenoiseState *st;
+    st = (DenoiseState*)malloc(rnnoise_get_size());
+    rnnoise_init(st);
+    return st;
+}
+
 static void check_init() {
     int i;
     if (common.init) return;
@@ -145,6 +161,32 @@ void feature_extract(Tensor* input, Tensor* cspecs, Tensor* features) {
   return;
 }
 
+void feature_extract_frame(Tensor* input, Tensor* cspecs, Tensor* features, DenoiseState* st) {
+    float x[FFT_LEN];
+    kiss_fft_cpx X[FREQ_SIZE];
+    float Ex[NB_BANDS];
+    float feature[NB_FEATURES];
+
+    for (int i = 0; i < WINDOW_SIZE; i ++ )
+        x[i] = input->data[i];
+    for (int i = WINDOW_SIZE; i < FFT_LEN; i ++ )
+        x[i] = 0;
+    
+    apply_window(x);
+    
+    forward_transform(X, x);
+
+    compute_frame_features(st, X, Ex, feature);
+
+    for (int i = 0; i < FREQ_SIZE; i ++ ) {
+        cspecs->data[i] = X[i].r;
+        cspecs->data[i + FREQ_SIZE] = X[i].i;
+    }
+    for (int i = 0; i < NB_FEATURES; i ++ ) {
+        features->data[i] = feature[i];
+    }
+}
+
 float* istft(Tensor* cspecs, int num_samples) {
     assert(cspecs->ndim == 3); // cspecs shape: [2, T, F]
     int T = cspecs->shape[1], F = cspecs->shape[2];
@@ -219,6 +261,33 @@ void post_process(Tensor* cspecs, Tensor* gains, float* outputs_ptr) {
         }
     }
     return ;
+}
+
+void post_process_frame(Tensor* cspecs, Tensor* gains, float* out, DenoiseState* st) {
+    assert(cspecs->ndim == 3); // cspecs shape: [2, T, F]
+    int T = cspecs->shape[1], F = cspecs->shape[2];
+    assert(F == FREQ_SIZE);
+
+    int delayNum = (WINDOW_SIZE-FRAME_SIZE);
+    kiss_fft_cpx X[FREQ_SIZE];
+    float g[NB_BANDS];
+    float gf[FREQ_SIZE]={1};
+
+    float tmp_X_R[FREQ_SIZE], tmp_X_I[FREQ_SIZE];
+    memcpy(g, gains->data, NB_BANDS*sizeof(float));
+    memcpy(tmp_X_R, cspecs->data, FREQ_SIZE*sizeof(float));
+    memcpy(tmp_X_I, cspecs->data+T*F, FREQ_SIZE*sizeof(float));
+    for (int i = 0; i < FREQ_SIZE; i ++ ) {
+        X[i].r = tmp_X_R[i];
+        X[i].i = tmp_X_I[i];
+    }
+    interp_band_gain(gf, g);
+    for(int i = 0; i < F; i ++ ) {
+        X[i].r *= gf[i];
+        X[i].i *= gf[i];
+    }
+
+    frame_synthesis(st, out, X);
 }
 
 void compute_band_energy(float *bandE, const kiss_fft_cpx *X) {

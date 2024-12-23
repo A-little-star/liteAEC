@@ -58,7 +58,7 @@ ModelStateDict *parse_json_to_parameters(const char *filename) {
         // 获取键名
         strncpy(parameters[index].name, item->string, MAX_PARAM_NAME - 1);
         parameters[index].name[MAX_PARAM_NAME - 1] = '\0';
-        printf("%s\n", parameters[index].name);
+        // printf("%s\n", parameters[index].name);
 
         // 获取值数组
         cJSON *values = cJSON_GetObjectItem(json, item->string);

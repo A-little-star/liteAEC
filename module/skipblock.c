@@ -14,7 +14,7 @@ SkipBlock* create_skipblock(int hidden_channels) {
         1, 1, 
         1, 1, 
         0, 0, 
-        1
+        1, 0
     );
     return block;
 }

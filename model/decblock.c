@@ -2,7 +2,7 @@
 #include "../include/tensor.h"
 #include "../include/model.h"
 
-DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_res, int is_last) {
+DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_res, int is_last, int stream) {
     DecoderBlock* block = (DecoderBlock*)malloc(sizeof(DecoderBlock));
     block->in_channels = in_channels;
     block->out_channels = out_channels;
@@ -10,7 +10,7 @@ DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_re
     block->is_last = is_last;
     block->skip = create_skipblock(in_channels);
     if (use_res) {
-        block->resblock = create_residualblock(in_channels);
+        block->resblock = create_residualblock(in_channels, stream);
     }
     block->subpixconv = create_subpixelconv(in_channels, out_channels);
     if (!is_last) {

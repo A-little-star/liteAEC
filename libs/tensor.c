@@ -46,8 +46,8 @@ void init_tensor(Tensor* tensor, float* values) {
 }
 
 // 打印 Tensor 的形状
-void print_tensor_shape(Tensor* tensor) {
-    printf("Tensor shape: (");
+void print_tensor_shape(Tensor* tensor, const char* name) {
+    printf("%s shape: (", name);
     for (int i = 0; i < tensor->ndim; i++) {
         printf("%d", tensor->shape[i]);
         if (i < tensor->ndim - 1) {

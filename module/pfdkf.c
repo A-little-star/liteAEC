@@ -266,7 +266,8 @@ void update(PFDKF *filter) {
 
 void pfdkf(const float *x, const float *d, float *e_out, float *y_out, int wav_length) {
     int N = 10;
-    int M = 400;
+    // int M = 400;
+    int M = 256;
     float A = 0.999;
     float P_initial = 10.0;
 

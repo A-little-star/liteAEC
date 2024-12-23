@@ -2,7 +2,7 @@
 #include "../include/tensor.h"
 #include "../include/model.h"
 
-EncoderBlock *create_encoder_block(int in_channels, int out_channels) {
+EncoderBlock *create_encoder_block(int in_channels, int out_channels, int stream) {
     EncoderBlock *block = (EncoderBlock*)malloc(sizeof(EncoderBlock));
     block->in_channels = in_channels;
     block->out_channels = out_channels;
@@ -14,7 +14,7 @@ EncoderBlock *create_encoder_block(int in_channels, int out_channels) {
         in_channels, out_channels, 
         4, 3, 
         1, 2, 
-        3, 0
+        3, 0, stream
     );
     block->bn = create_batchnorm_layer(out_channels, 1e-5);
     block->act = create_elu_layer(1);

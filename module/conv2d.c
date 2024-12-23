@@ -11,7 +11,7 @@ Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
                                  int kernel_h, int kernel_w,
                                  int stride_h, int stride_w,
                                  int padding_h, int padding_w,
-                                 int group) {
+                                 int group, int stream) {
     Conv2DLayer* layer = (Conv2DLayer*)malloc(sizeof(Conv2DLayer));
     layer->in_channels = in_channels;
     layer->out_channels = out_channels;
@@ -22,6 +22,7 @@ Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
     layer->padding_h = padding_h;
     layer->padding_w = padding_w;
     layer->group = group;
+    layer->stream = stream;
 
     // 分配权重和偏置的内存
     int weight_size = out_channels * in_channels * kernel_h * kernel_w / group;
@@ -35,6 +36,7 @@ Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
     for (int i = 0; i < out_channels; i++) {
         layer->bias[i] = (float)0.0f;  // 偏置初始化为0
     }
+    layer->buffer = NULL; // 表示一个尚未确定形状的缓冲区，将在forward中分配空间
 
     return layer;
 }
@@ -74,6 +76,7 @@ Parameter* conv2d_load_params(Conv2DLayer* layer, Parameter *params) {
 void free_conv2d_layer(Conv2DLayer *layer) {
     free(layer->weights);
     free(layer->bias);
+    if (layer->stream && layer->buffer) delete_tensor(layer->buffer);
     layer->weights = NULL;
     layer->bias = NULL;
     free(layer);
@@ -81,8 +84,9 @@ void free_conv2d_layer(Conv2DLayer *layer) {
 }
 
 // 计算输出的高度和宽度
-void compute_output_size(Conv2DLayer *layer, int in_h, int in_w, int *out_h, int *out_w) {
-    *out_h = (in_h + 2 * layer->padding_h - layer->kernel_h) / layer->stride_h + 1;
+void compute_output_size(Conv2DLayer *layer, int in_h, int in_w, int *out_h, int *out_w, int stream) {
+    if (stream) *out_h = (in_h + layer->padding_h - layer->kernel_h) / layer->stride_h + 1;
+    else *out_h = (in_h + 2 * layer->padding_h - layer->kernel_h) / layer->stride_h + 1;
     *out_w = (in_w + 2 * layer->padding_w - layer->kernel_w) / layer->stride_w + 1;
 }
 
@@ -99,6 +103,12 @@ Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input) {
     int padding_w = layer->padding_w;
     int group = layer->group;
 
+    int stream = layer->stream;
+    if (stream) {
+        padding_h = 0;
+        // layer->padding_h = 0;
+    }
+
     // 取出输入张量的形状
     int in_c = input->shape[0], in_h = input->shape[1], in_w = input->shape[2];
     if (in_c != in_channels) {
@@ -106,13 +116,34 @@ Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input) {
         assert(0);
     };
 
+    // 如果是流式推理，那么第一帧创建buffer
+    Tensor* padded_input;
+    if (stream && (kernel_h > 1)) {
+        if (layer->buffer == NULL) {
+            int buffer_shape[] = {in_c, kernel_h - 1, in_w};
+            layer->buffer = create_tensor(buffer_shape, 3);
+            for (int i = 0; i < layer->buffer->size; i ++ ) layer->buffer->data[i] = 0;
+        }
+        padded_input = concatenate(layer->buffer, input, 1);
+        delete_tensor(layer->buffer);
+        int start_index[] = {0, padded_input->shape[1] - (kernel_h - 1), 0};
+        int end_index[] = {padded_input->shape[0], padded_input->shape[1], padded_input->shape[2]};
+        layer->buffer = tensor_slice(padded_input, start_index, end_index);
+    }
+    else {
+        padded_input = input;
+    }
+
+    // 重新计算形状参数
+    in_c = padded_input->shape[0], in_h = padded_input->shape[1], in_w = padded_input->shape[2];
+
     // 每个组的输入和输出通道数
     int group_in_channels = in_channels / group;
     int group_out_channels = out_channels / group;
 
     // 计算输出的高度和宽度
     int out_h, out_w;
-    compute_output_size(layer, in_h, in_w, &out_h, &out_w);
+    compute_output_size(layer, in_h, in_w, &out_h, &out_w, stream);
 
     // 创建输出向量
     Tensor* output = create_tensor((int[]){out_channels, out_h, out_w}, 3);
@@ -157,7 +188,7 @@ Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input) {
                                 // 检查边界
                                 if (in_h_index >= 0 && in_h_index < in_h &&
                                     in_w_index >= 0 && in_w_index < in_w) {
-                                    sum += input->data[(in_channel * in_h + in_h_index) * in_w + in_w_index] *
+                                    sum += padded_input->data[(in_channel * in_h + in_h_index) * in_w + in_w_index] *
                                            layer->weights[((out_channel * group_in_channels + ic) * kernel_h + kh) * kernel_w + kw];
                                 }
                             }
@@ -170,6 +201,6 @@ Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input) {
             }
         }
     }
-
+    if (stream && (kernel_h > 1)) delete_tensor(padded_input);
     return output;
 }

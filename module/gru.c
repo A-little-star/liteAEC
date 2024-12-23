@@ -92,7 +92,11 @@ Tensor* gru_forward(GRULayer* layer, Tensor* input, Tensor* hidden_state) {
     int hidden_size = layer->hidden_size;
     int seq_len = input->shape[0];
     assert(input_size == input->shape[1]);
-    assert(hidden_size == hidden_state->shape[0]);
+    // assert(hidden_size == hidden_state->shape[0]);
+    if (hidden_size != hidden_state->shape[0]) {
+        printf("In gru_forward: hidden_size = %d, but hidden_state's length is %d\n", hidden_size, hidden_state->shape[0]);
+        assert(0);
+    }
 
     Tensor* output = create_tensor((int[]){input->shape[0], hidden_size}, 2);
 
@@ -153,6 +157,8 @@ Tensor* gru_forward(GRULayer* layer, Tensor* input, Tensor* hidden_state) {
         memcpy(o_t, h_new, hidden_size * sizeof(float));
         memcpy(hidden_state->data, h_new, hidden_size * sizeof(float));
     }
+
+    // if (layer->stream) memcpy(layer->hidden_state->data, hidden_state->data, hidden_size * sizeof(float));
 
     // 释放临时内存
     free(r); free(z); free(n); free(h_new);
