@@ -300,7 +300,7 @@ int main() {
 
     // *** stage 2: 读取模型参数并解析 ***
 
-    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/model_weights.json";
+    const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/checkpoint/model_weights.json";
     ModelStateDict *sd = parse_json_to_parameters(cpt);
     printf("stage 2 executed successfully.\n");
 
