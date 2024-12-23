@@ -13,6 +13,7 @@ typedef struct {
     DepthwiseConv2DLayer *conv2d;
     BatchNormLayer *bn;
     ELULayer *act;
+    int stream;
 } EncoderBlock;
 
 typedef struct {
@@ -31,6 +32,7 @@ typedef struct {
     SubPixelConv* subpixconv;
     BatchNormLayer* bn;
     ELULayer* act;
+    int stream;
 } DecoderBlock;
 
 typedef struct {
@@ -41,9 +43,11 @@ typedef struct {
     DecoderBlock *dec[4];
     LinearLayer *fc;
     SigmoidLayer *sigmoid;
+    int stream;
 } RNNVQE;
 
 EncoderBlock *create_encoder_block(int in_channels, int out_channels, int stream);
+void encoder_block_reset_buffer(EncoderBlock* block);
 void free_encoder_block(EncoderBlock *block);
 Parameter* encoderblock_load_params(EncoderBlock *block, Parameter *params);
 Tensor *encoderblock_forward(EncoderBlock *block, Tensor *input);
@@ -54,11 +58,13 @@ Parameter* bottleneck_load_params(BottleNeck *btnk, Parameter *params);
 Tensor *bottleneck_forward(BottleNeck *btnk, Tensor *input, Tensor *hidden_state);
 
 DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_res, int is_last, int stream);
+void decoder_block_reset_buffer(DecoderBlock* block);
 void free_decoder_block(DecoderBlock* block);
 Parameter* decoderblock_load_params(DecoderBlock* block, Parameter* params);
 Tensor* decoderblock_forward(DecoderBlock* block, Tensor* en, Tensor* de);
 
 RNNVQE* create_rnnvqe(int stream);
+void rnnvqe_reset_buffer(RNNVQE* model);
 Parameter* rnnvqe_load_params(RNNVQE *model, ModelStateDict *sd);
 void free_rnnvqe(RNNVQE *model);
 Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref, Tensor* hidden_state);

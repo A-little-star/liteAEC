@@ -41,6 +41,15 @@ Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels,
     return layer;
 }
 
+void conv2d_reset_buffer(Conv2DLayer* layer) {
+    if (layer->stream) {
+        if (layer->buffer) {
+            delete_tensor(layer->buffer);
+            layer->buffer = NULL;
+        }
+    }
+}
+
 // 加载卷积层参数
 Parameter* conv2d_load_params(Conv2DLayer* layer, Parameter *params) {
     int in_channels = layer->in_channels;

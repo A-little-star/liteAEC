@@ -4,8 +4,6 @@
 #include "../include/parser.h"
 #include "../include/cJSON.h"
 
-#define MAX_PARAM_NAME 100
-
 // 解析 JSON 文件
 ModelStateDict *parse_json_to_parameters(const char *filename) {
     // 打开文件

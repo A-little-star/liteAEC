@@ -18,6 +18,7 @@ DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_cha
     layer->stride_w = stride_w;
     layer->padding_h = padding_h;
     layer->padding_w = padding_w;
+    layer->stream = stream;
 
     layer->depth_conv = create_conv2d_layer(
         in_channels, in_channels, 
@@ -35,6 +36,10 @@ DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_cha
     );
     return layer;
 };
+
+void depthwise_conv2d_reset_buffer(DepthwiseConv2DLayer* layer) {
+    if (layer->stream) conv2d_reset_buffer(layer->depth_conv);
+}
 
 Parameter* depthwise_conv2d_load_params(DepthwiseConv2DLayer *layer, Parameter *params) {
     Parameter *p1 = conv2d_load_params(layer->depth_conv, params);

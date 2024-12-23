@@ -24,8 +24,10 @@ typedef struct {
 } PFDKF;
 
 PFDKF *init_pfdkf(int N, int M, float A, float P_initial);
-void filt(PFDKF *filter, const float *x, const float *d, float *e_out, float *y_out);
 void free_pfdkf(PFDKF *filter);
+
+void filt(PFDKF *filter, const float *x, const float *d, float *e_out, float *y_out);
+void update(PFDKF *filter);
 void pfdkf(const float *x, const float *d, float *e_out, float *y_out, int wav_length);
 
 #endif

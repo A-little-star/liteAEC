@@ -10,6 +10,7 @@ EncoderBlock *create_encoder_block(int in_channels, int out_channels, int stream
     block->kernel_w = 3;
     block->stride_h = 1;
     block->stride_w = 2;
+    block->stream = stream;
     block->conv2d = create_depthwise_conv2d_layer(
         in_channels, out_channels, 
         4, 3, 
@@ -20,6 +21,10 @@ EncoderBlock *create_encoder_block(int in_channels, int out_channels, int stream
     block->act = create_elu_layer(1);
 
     return block;
+}
+
+void encoder_block_reset_buffer(EncoderBlock* block) {
+    if (block->stream) depthwise_conv2d_reset_buffer(block->conv2d);
 }
 
 void free_encoder_block(EncoderBlock *block) {

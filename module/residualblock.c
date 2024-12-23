@@ -9,6 +9,7 @@
 ResidualBlock* create_residualblock(int hidden_channels, int stream) {
     ResidualBlock* block = (ResidualBlock*)malloc(sizeof(ResidualBlock));
     block->hidden_channels = hidden_channels;
+    block->stream = stream;
     block->conv2d = create_conv2d_layer(
         hidden_channels, hidden_channels,
         4, 3,
@@ -19,6 +20,10 @@ ResidualBlock* create_residualblock(int hidden_channels, int stream) {
     block->bn = create_batchnorm_layer(hidden_channels, 1e-5);
     block->act = create_elu_layer(1);
     return block;
+}
+
+void residualblock_reset_buffer(ResidualBlock* block) {
+    if (block->stream) conv2d_reset_buffer(block->conv2d);
 }
 
 void free_residualblock(ResidualBlock* block) {

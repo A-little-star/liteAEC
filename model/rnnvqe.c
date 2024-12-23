@@ -11,6 +11,7 @@ RNNVQE* create_rnnvqe(int stream) {
     int hidden_dim = 192;
     RNNVQE *model = (RNNVQE*)malloc(sizeof(RNNVQE));
     model->hidden_dim = hidden_dim;
+    model->stream = stream;
     model->mic_enc[0] = create_encoder_block(encoder_mic_channels[0], encoder_mic_channels[1], stream);
     model->ref_enc = create_encoder_block(encoder_ref_channels[0], encoder_ref_channels[1], stream);
     model->mic_enc[1] = create_encoder_block(encoder_mic_channels[1] + encoder_ref_channels[1], encoder_mic_channels[2], stream);
@@ -24,6 +25,14 @@ RNNVQE* create_rnnvqe(int stream) {
     model->fc = create_linear_layer(110, 100);
     model->sigmoid = create_sigmoid_layer();
     return model;
+}
+
+void rnnvqe_reset_buffer(RNNVQE* model) {
+    if (model->stream) {
+        for (int i = 0; i < 4; i ++ ) encoder_block_reset_buffer(model->mic_enc[i]);
+        encoder_block_reset_buffer(model->ref_enc);
+        for (int i = 0; i < 4; i ++ ) decoder_block_reset_buffer(model->dec[i]);
+    }
 }
 
 Parameter* rnnvqe_load_params(RNNVQE *model, ModelStateDict *sd) {

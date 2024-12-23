@@ -69,6 +69,7 @@ typedef struct {
 
     Conv2DLayer* depth_conv;
     Conv2DLayer* point_conv;
+    int stream;
 } DepthwiseConv2DLayer;
 
 typedef struct {
@@ -87,6 +88,7 @@ typedef struct {
     Conv2DLayer* conv2d;
     BatchNormLayer* bn;
     ELULayer* act;
+    int stream;
 } ResidualBlock;
 
 LinearLayer* create_linear_layer(int input_size, int output_size);
@@ -97,6 +99,7 @@ Tensor* linear_forward(LinearLayer* layer, Tensor* input);
 // 创建卷积层
 Conv2DLayer* create_conv2d_layer(int in_channels, int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w,
                                 int padding_h, int padding_w, int group, int stream);
+void conv2d_reset_buffer(Conv2DLayer* layer);
 Tensor* conv2d_forward(Conv2DLayer *layer, Tensor* input);
 Parameter* conv2d_load_params(Conv2DLayer* layer, Parameter *params);
 void free_conv2d_layer(Conv2DLayer *layer);
@@ -121,6 +124,7 @@ Tensor* sigmoid_forward(SigmoidLayer* layer, Tensor* input);
 
 DepthwiseConv2DLayer* create_depthwise_conv2d_layer(
     int in_channels, int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w, int stream);
+void depthwise_conv2d_reset_buffer(DepthwiseConv2DLayer* layer);
 Parameter* depthwise_conv2d_load_params(DepthwiseConv2DLayer *layer, Parameter *params);
 void free_depthwise_conv2d_layer(DepthwiseConv2DLayer *layer);
 Tensor* depthwise_conv2d_forward(DepthwiseConv2DLayer *layer, Tensor *input);
@@ -136,6 +140,7 @@ Parameter* subpixelconv_load_params(SubPixelConv* block, Parameter* params);
 Tensor* subpixelconv_forward(SubPixelConv* block, Tensor* input);
 
 ResidualBlock* create_residualblock(int hidden_channels, int stream);
+void residualblock_reset_buffer(ResidualBlock* block);
 void free_residualblock(ResidualBlock* block);
 Parameter* residualblock_load_params(ResidualBlock* block, Parameter* params);
 Tensor* residualblock_forward(ResidualBlock* block, Tensor* input);

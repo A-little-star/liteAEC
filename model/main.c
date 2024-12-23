@@ -300,7 +300,7 @@ int main() {
 
     const char *cpt = "/home/node25_tmpdata/xcli/percepnet/c_aec/model_weights.json";
     ModelStateDict *sd = parse_json_to_parameters(cpt);
-    printf("stage 3 executed successfully.\n");
+    printf("stage 2 executed successfully.\n");
 
     // *** stage 3: 构建模型并加载模型参数 ***
 
@@ -308,9 +308,9 @@ int main() {
     Parameter *params = sd->params;
     rnnvqe_load_params(model, sd);
     free_model_state_dict(sd);
-    printf("stage 4 executed successfully.\n");
+    printf("stage 3 executed successfully.\n");
 
-    // *** stage 5: 模型推理 ***
+    // *** stage 4: 模型推理 ***
 
     int N = 10;
     int M = 256;
@@ -341,15 +341,16 @@ int main() {
             filt(filter, ref_, mic_, e_, y_);
             update(filter);
         }
-        filt(filter, mic_+s+hop_len, ref_+s+hop_len, e_+s+hop_len, y_+s+hop_len);
+        float *e_n = (float*)malloc(M * sizeof(float));
+        float *y_n = (float*)malloc(M * sizeof(float));
+        filt(filter, ref_+s+hop_len, mic_+s+hop_len, e_+s+hop_len, y_+s+hop_len); // 注意线性滤波是先ref后mic，踩了很多次坑了
         update(filter);
         if (s == 0) {
-            wav_norm(mic_, win_len);
-            wav_norm(y_, win_len);
-        } else {
-            wav_norm(mic_+s+hop_len, hop_len);
-            wav_norm(y_+s+hop_len, hop_len);
+            wav_norm(mic_, hop_len);
+            wav_norm(y_, hop_len);
         }
+        wav_norm(mic_+s+hop_len, hop_len);
+        wav_norm(y_+s+hop_len, hop_len);
         init_tensor(mic, mic_ + s);
         init_tensor(y, y_ + s);
         feature_extract_frame(mic, cspecs_mic, features_mic, st_mic);
@@ -358,8 +359,9 @@ int main() {
         post_process_frame(cspecs_mic, gains_frame, out_wav + s, st_out);
         wav_invnorm(out_wav+s, hop_len);
     }
+    rnnvqe_reset_buffer(model);
 
-    printf("stage 5 executed successfully.\n");
+    printf("stage 4 executed successfully.\n");
 
     // *** stage 5: 写入文件 ***
     const char *filename_out = "/home/node25_tmpdata/xcli/percepnet/c_aec/test_wav/out_stream.wav";
@@ -368,7 +370,7 @@ int main() {
     } else {
         printf("Failed to write WAV file.\n");
     }
-    printf("stage 6 executed successfully.\n");
+    printf("stage 5 executed successfully.\n");
 
     return 0;
 }

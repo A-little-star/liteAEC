@@ -1,6 +1,6 @@
 # 定义编译器和编译选项
 CC = gcc
-CFLAGS = -Wall -O2 -Iinclude -g
+CFLAGS = -Wall -O2 -Iinclude -g -w  # -w 忽略所有warning信息，调试代码时务必删掉:
 LDFLAGS = -lm
 
 # 定义项目结构

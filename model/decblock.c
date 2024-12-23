@@ -8,6 +8,7 @@ DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_re
     block->out_channels = out_channels;
     block->use_res = use_res;
     block->is_last = is_last;
+    block->stream = stream;
     block->skip = create_skipblock(in_channels);
     if (use_res) {
         block->resblock = create_residualblock(in_channels, stream);
@@ -18,6 +19,10 @@ DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_re
         block->act = create_elu_layer(1);
     }
     return block;
+}
+
+void decoder_block_reset_buffer(DecoderBlock* block) {
+    if (block->stream && block->use_res) residualblock_reset_buffer(block->resblock);
 }
 
 void free_decoder_block(DecoderBlock* block) {
