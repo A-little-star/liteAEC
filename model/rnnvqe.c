@@ -5,10 +5,10 @@
 #include "../include/model.h"
 
 RNNVQE* create_rnnvqe(int stream) {
-    int encoder_mic_channels[] = {1, 8, 16, 24, 32};
+    int encoder_mic_channels[] = {1, 8, 16, 20, 24};
     int encoder_ref_channels[] = {1, 8};
-    int decoder_channels[] = {32, 24, 16, 8, 1};
-    int hidden_dim = 192;
+    int decoder_channels[] = {24, 20, 16, 8, 1};
+    int hidden_dim = 144;
     RNNVQE *model = (RNNVQE*)malloc(sizeof(RNNVQE));
     model->hidden_dim = hidden_dim;
     model->stream = stream;
@@ -21,7 +21,7 @@ RNNVQE* create_rnnvqe(int stream) {
     model->dec[0] = create_decoder_block(decoder_channels[0], decoder_channels[1], 0, 0, stream);
     model->dec[1] = create_decoder_block(decoder_channels[1], decoder_channels[2], 0, 0, stream);
     model->dec[2] = create_decoder_block(decoder_channels[2], decoder_channels[3], 0, 0, stream);
-    model->dec[3] = create_decoder_block(decoder_channels[3], decoder_channels[4], 1, 1, stream);
+    model->dec[3] = create_decoder_block(decoder_channels[3], decoder_channels[4], 0, 1, stream);
     model->fc = create_linear_layer(110, 100);
     model->sigmoid = create_sigmoid_layer();
     return model;
@@ -65,7 +65,7 @@ void free_rnnvqe(RNNVQE *model) {
     }
 }
 
-Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref, Tensor *hidden_state) {
+Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref, Tensor *hidden_state, Tensor *cell_state) {
     Tensor *mic_enc1_out = encoderblock_forward(model->mic_enc[0], mic);
     Tensor *mic_ref1_out = encoderblock_forward(model->ref_enc, ref);
     Tensor *enc1_out_cat = concatenate(mic_ref1_out, mic_enc1_out, 0);
@@ -76,7 +76,7 @@ Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref, Tensor *hidden_s
     // Tensor *hidden_state = create_tensor((int[]){model->hidden_dim}, 1);
     // for (int i = 0; i < hidden_state->size; i ++ )
     //     hidden_state->data[i] = 0;
-    Tensor *feats_out = bottleneck_forward(model->bottleneck, enc4_out, hidden_state);
+    Tensor *feats_out = bottleneck_forward(model->bottleneck, enc4_out, hidden_state, cell_state);
     
     Tensor *dec1_out = decoderblock_forward(model->dec[0], enc4_out, feats_out);
     Tensor *dec2_out = decoderblock_forward(model->dec[1], enc3_out, dec1_out);

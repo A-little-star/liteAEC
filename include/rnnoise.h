@@ -20,5 +20,6 @@ int rnnoise_get_size();
 int rnnoise_init(DenoiseState *st);
 
 DenoiseState *rnnoise_create();
+void rnnoise_destroy(DenoiseState *st);
 
 #endif

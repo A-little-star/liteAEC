@@ -18,7 +18,8 @@ EncoderBlock *create_encoder_block(int in_channels, int out_channels, int stream
         3, 0, stream
     );
     block->bn = create_batchnorm_layer(out_channels, 1e-5);
-    block->act = create_elu_layer(1);
+    // block->act = create_elu_layer(1);
+    block->act = create_leaky_relu_layer(0.01);
 
     return block;
 }

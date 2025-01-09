@@ -34,6 +34,10 @@ DenoiseState *rnnoise_create() {
     return st;
 }
 
+void rnnoise_destroy(DenoiseState *st) {
+  free(st);
+}
+
 static void check_init() {
     int i;
     if (common.init) return;

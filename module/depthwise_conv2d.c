@@ -5,6 +5,8 @@
 #include "../include/module.h"
 #include "../include/parser.h"
 
+// 注意这里的深度可分离卷积和真正的深度可分离卷积不一样，为了方便进行量化，将分组卷积改为了普通卷积
+
 DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_channels,
                                 int kernel_h, int kernel_w,
                                 int stride_h, int stride_w,
@@ -25,7 +27,7 @@ DepthwiseConv2DLayer* create_depthwise_conv2d_layer(int in_channels, int out_cha
         kernel_h, kernel_w, 
         stride_h, stride_w, 
         padding_h, padding_w, 
-        in_channels, stream
+        1, stream
     );
     layer->point_conv = create_conv2d_layer(
         in_channels, out_channels,

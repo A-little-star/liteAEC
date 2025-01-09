@@ -55,7 +55,7 @@ Tensor *encoderblock_forward(EncoderBlock *block, Tensor *input);
 BottleNeck* create_bottleneck(int hidden_dim);
 void free_bottleneck(BottleNeck *btnk);
 Parameter* bottleneck_load_params(BottleNeck *btnk, Parameter *params);
-Tensor *bottleneck_forward(BottleNeck *btnk, Tensor *input, Tensor *hidden_state);
+Tensor *bottleneck_forward(BottleNeck *btnk, Tensor *input, Tensor *hidden_state, Tensor *cell_state);
 
 DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_res, int is_last, int stream);
 void decoder_block_reset_buffer(DecoderBlock* block);
@@ -67,6 +67,6 @@ RNNVQE* create_rnnvqe(int stream);
 void rnnvqe_reset_buffer(RNNVQE* model);
 Parameter* rnnvqe_load_params(RNNVQE *model, ModelStateDict *sd);
 void free_rnnvqe(RNNVQE *model);
-Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref, Tensor* hidden_state);
+Tensor *rnnvqe_forward(RNNVQE *model, Tensor *mic, Tensor *ref, Tensor* hidden_state, Tensor* cell_state);
 
 #endif

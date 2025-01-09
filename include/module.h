@@ -40,6 +40,18 @@ typedef struct {
     float *b_hr, *b_hz, *b_hn; // 隐藏状态偏置
 } GRULayer;
 
+// LSTM层定义
+typedef struct {
+    int input_size;  // 输入特征维度
+    int hidden_size; // 隐藏层维度
+
+    // 权重矩阵和偏置向量
+    float *W_ii, *W_if, *W_ig, *W_io; // 输入到各门的权重
+    float *W_hi, *W_hf, *W_hg, *W_ho; // 隐藏状态到各门的权重
+    float *b_ii, *b_if, *b_ig, *b_io; // 输入偏置
+    float *b_hi, *b_hf, *b_hg, *b_ho; // 隐藏状态偏置
+} LSTMLayer;
+
 // BatchNorm 层定义
 typedef struct {
     int num_features;   // 输入通道数
@@ -54,6 +66,11 @@ typedef struct {
 typedef struct {
     float alpha;  // 控制负值部分的参数
 } ELULayer;
+
+// LeakyReLU 层定义
+typedef struct {
+    float negative_slope; // 控制负值部分的斜率
+} LeakyReLULayer;
 
 // Sigmoid 层定义
 typedef struct {
@@ -109,6 +126,11 @@ void free_gru_layer(GRULayer* layer);
 Parameter* gru_load_params(GRULayer* layer, Parameter* params);
 Tensor* gru_forward(GRULayer* layer, Tensor* input, Tensor* hidden_state);
 
+LSTMLayer* create_lstm_layer(int input_size, int hidden_size);
+void free_lstm_layer(LSTMLayer* layer);
+Parameter* lstm_load_params(LSTMLayer* layer, Parameter* params);
+Tensor* lstm_forward(LSTMLayer* layer, Tensor* input, Tensor* hidden_state, Tensor* cell_state);
+
 BatchNormLayer* create_batchnorm_layer(int num_features, float epsilon);
 void free_batchnorm_layer(BatchNormLayer* layer);
 Parameter* batchnorm_load_params(BatchNormLayer *layer, Parameter *params);
@@ -117,6 +139,10 @@ Tensor* batchnorm_forward(BatchNormLayer* layer, Tensor* input);
 ELULayer* create_elu_layer(float alpha);
 void free_elu_layer(ELULayer *layer);
 Tensor* elu_forward(ELULayer* layer, Tensor* input);
+
+LeakyReLULayer* create_leaky_relu_layer(float negative_slope);
+void free_leaky_relu_layer(LeakyReLULayer* layer);
+Tensor* leaky_relu_forward(LeakyReLULayer* layer, Tensor* input);
 
 SigmoidLayer* create_sigmoid_layer();
 void free_sigmoid_layer(SigmoidLayer* layer);

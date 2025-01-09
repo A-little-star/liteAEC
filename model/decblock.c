@@ -16,7 +16,8 @@ DecoderBlock* create_decoder_block(int in_channels, int out_channels, int use_re
     block->subpixconv = create_subpixelconv(in_channels, out_channels);
     if (!is_last) {
         block->bn = create_batchnorm_layer(out_channels, 1e-5);
-        block->act = create_elu_layer(1);
+        // block->act = create_elu_layer(1);
+        block->act = create_leaky_relu_layer(0.01);
     }
     return block;
 }

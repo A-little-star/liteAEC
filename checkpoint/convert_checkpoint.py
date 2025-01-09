@@ -20,4 +20,4 @@ def export_model_weights(checkpoint_path, output_path):
     with open(output_path, "w") as json_file:
         json.dump(params, json_file, indent=4)  # indent指定缩进，4表示每层缩进4个空格
 
-export_model_weights("/home/node25_tmpdata/xcli/percepnet/c_aec/8.pt.tar", "model_weights.json")
+export_model_weights("/home/node25_tmpdata/xcli/percepnet/c_aec/checkpoint/rnnvqe_last.pt.tar", "/home/node25_tmpdata/xcli/percepnet/c_aec/checkpoint/model_weights_rnnvqe_last.json")
