@@ -9,6 +9,6 @@ char* extract_filename(const char* path);
 // 拼接输出路径的函数
 char* create_output_path(const char* out_dir, const char* filename);
 // 推理一条音频
-int infer_one_wav(RNNVQE* model, const char* filename_mic, const char* filename_ref, const char* filename_out);
+int infer_one_wav(RNNVQE* model, const char* filename_mic, const char* filename_ref, const char* filename_out, int stream);
 
 #endif

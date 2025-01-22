@@ -281,13 +281,15 @@ int main() {
     const char *cpt = "./checkpoint/model_weights_rnnvqe_last.json";
     ModelStateDict *sd = parse_json_to_parameters(cpt);
 
-    RNNVQE *model = create_rnnvqe(1);  // 输入参数为stream，为1是流式推理，为0时非流式整句推理
+    int stream = 1;   // 是否流式推理，值为1时进行流式推理，值为0时进行非流式推理
+
+    RNNVQE *model = create_rnnvqe(stream);  // 输入参数为stream，为1是流式推理，为0时非流式整句推理
     Parameter *params = sd->params;
     rnnvqe_load_params(model, sd);
     free_model_state_dict(sd);
 
     const char* lst_file_path = "./goertek.lst";
-    const char* out_dir = "./decode/c_decode";   // 最后不用加 "/"
+    const char* out_dir = "./decode/c_decode_stream";   // 最后不用加 "/"
     FILE* file = fopen(lst_file_path, "r");
     if (!file) {
         perror("无法打开文件");
@@ -306,8 +308,9 @@ int main() {
         char* filename_ref = replace_substring(filename_mic, "_mic", "_lpb");
         char* name = extract_filename(filename_mic);
         char* filename_out = create_output_path(out_dir, name);
-        infer_one_wav(model, filename_mic, filename_ref, filename_out);
+        infer_one_wav(model, filename_mic, filename_ref, filename_out, stream);
     }
+    free_rnnvqe(model);
 
     return 0;
 }

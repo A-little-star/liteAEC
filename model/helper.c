@@ -107,7 +107,7 @@ char* create_output_path(const char* out_dir, const char* filename) {
     return output_path;
 }
 
-int infer_one_wav(RNNVQE* model, const char* filename_mic, const char* filename_ref, const char* filename_out) {
+int infer_one_wav(RNNVQE* model, const char* filename_mic, const char* filename_ref, const char* filename_out, int stream) {
     int num_samples;                        // 样本数
     int sample_rate;                        // 采样率
     float *mic_ = read_wav_file(filename_mic, &num_samples, &sample_rate);
@@ -131,52 +131,81 @@ int infer_one_wav(RNNVQE* model, const char* filename_mic, const char* filename_
     float P_initial = 10.0;
     PFDKF *filter = init_pfdkf(N, M, A, P_initial);
 
-    int win_len = WINDOW_SIZE;
-    int hop_len = FRAME_SIZE;
-    Tensor *mic = create_tensor((int[]){win_len}, 1);
-    Tensor *y = create_tensor((int[]){win_len}, 1);
-    Tensor* cspecs_mic = create_tensor((int[]){2, 1, FREQ_SIZE}, 3);
-    Tensor* cspecs_y = create_tensor((int[]){2, 1, FREQ_SIZE}, 3);
-    Tensor* features_mic = create_tensor((int[]){1, 1, NB_FEATURES}, 3);
-    Tensor* features_y = create_tensor((int[]){1, 1, NB_FEATURES}, 3);
     float* out_wav = (float*)malloc(num_samples*sizeof(float));
-    for (int s = 0, num_frame = 0; s + win_len < num_samples; s += hop_len, num_frame ++ ) {
-        if (s == 0) {
-            // 先把第一个256的线性滤波做好
-            filt(filter, ref_, mic_, e_, y_);
+    if (stream) {
+        int win_len = WINDOW_SIZE;
+        int hop_len = FRAME_SIZE;
+        Tensor *mic = create_tensor((int[]){win_len}, 1);
+        Tensor *y = create_tensor((int[]){win_len}, 1);
+        Tensor* cspecs_mic = create_tensor((int[]){2, 1, FREQ_SIZE}, 3);
+        Tensor* cspecs_y = create_tensor((int[]){2, 1, FREQ_SIZE}, 3);
+        Tensor* features_mic = create_tensor((int[]){1, 1, NB_FEATURES}, 3);
+        Tensor* features_y = create_tensor((int[]){1, 1, NB_FEATURES}, 3);
+        for (int s = 0, num_frame = 0; s + win_len < num_samples; s += hop_len, num_frame ++ ) {
+            if (s == 0) {
+                // 先把第一个256的线性滤波做好
+                filt(filter, ref_, mic_, e_, y_);
+                update(filter);
+            }
+            float *e_n = (float*)malloc(filter->M * sizeof(float));
+            float *y_n = (float*)malloc(filter->M * sizeof(float));
+            filt(filter, ref_+s+hop_len, mic_+s+hop_len, e_+s+hop_len, y_+s+hop_len); // 注意线性滤波是先ref后mic，踩了很多次坑了
             update(filter);
+            if (s == 0) {
+                wav_norm(mic_, hop_len);
+                wav_norm(y_, hop_len);
+            }
+            wav_norm(mic_+s+hop_len, hop_len);
+            wav_norm(y_+s+hop_len, hop_len);
+            init_tensor(mic, mic_ + s);
+            init_tensor(y, y_ + s);
+            feature_extract_frame(mic, cspecs_mic, features_mic, st_mic);
+            feature_extract_frame(y, cspecs_y, features_y, st_y);
+            Tensor* gains_frame = rnnvqe_forward(model, features_mic, features_y, hidden_state, cell_state);
+            post_process_frame(cspecs_mic, gains_frame, out_wav + s, st_out);
+            wav_invnorm(out_wav+s, hop_len);
         }
-        float *e_n = (float*)malloc(filter->M * sizeof(float));
-        float *y_n = (float*)malloc(filter->M * sizeof(float));
-        filt(filter, ref_+s+hop_len, mic_+s+hop_len, e_+s+hop_len, y_+s+hop_len); // 注意线性滤波是先ref后mic，踩了很多次坑了
-        update(filter);
-        if (s == 0) {
-            wav_norm(mic_, hop_len);
-            wav_norm(y_, hop_len);
-        }
-        wav_norm(mic_+s+hop_len, hop_len);
-        wav_norm(y_+s+hop_len, hop_len);
-        init_tensor(mic, mic_ + s);
-        init_tensor(y, y_ + s);
-        feature_extract_frame(mic, cspecs_mic, features_mic, st_mic);
-        feature_extract_frame(y, cspecs_y, features_y, st_y);
-        Tensor* gains_frame = rnnvqe_forward(model, features_mic, features_y, hidden_state, cell_state);
-        post_process_frame(cspecs_mic, gains_frame, out_wav + s, st_out);
-        wav_invnorm(out_wav+s, hop_len);
+        rnnvqe_reset_buffer(model);
+        delete_tensor(mic);
+        delete_tensor(y);
+        delete_tensor(cspecs_mic);
+        delete_tensor(cspecs_y);
+        delete_tensor(features_mic);
+        delete_tensor(features_y);
     }
-    rnnvqe_reset_buffer(model);
+    else if (!stream) {
+        pfdkf(ref_, mic_, e_, y_, num_samples);
+        wav_norm(mic_, num_samples);
+        wav_norm(ref_, num_samples);
+        wav_norm(e_, num_samples);
+        wav_norm(y_, num_samples);
+        Tensor *mic = create_tensor((int[]){num_samples}, 1);
+        Tensor *y = create_tensor((int[]){num_samples}, 1);
+        init_tensor(mic, mic_);
+        init_tensor(y, y_);
+        int length = num_samples / FRAME_SIZE;
+        Tensor* cspecs_mic = create_tensor((int[]){2, length, FREQ_SIZE}, 3);
+        Tensor* cspecs_y = create_tensor((int[]){2, length, FREQ_SIZE}, 3);
+        Tensor* features_mic = create_tensor((int[]){1, length, NB_FEATURES}, 3);
+        Tensor* features_y = create_tensor((int[]){1, length, NB_FEATURES}, 3);
+        feature_extract(mic, cspecs_mic, features_mic);
+        feature_extract(y, cspecs_y, features_y);
+        Tensor *gains = rnnvqe_forward(model, features_mic, features_y, hidden_state, cell_state);
+        post_process(cspecs_mic, gains, out_wav);
+        wav_invnorm(out_wav, num_samples);
+        delete_tensor(mic);
+        delete_tensor(y);
+        delete_tensor(cspecs_mic);
+        delete_tensor(cspecs_y);
+        delete_tensor(features_mic);
+        delete_tensor(features_y);
+    }
     
     delete_tensor(hidden_state);
     delete_tensor(cell_state);
     rnnoise_destroy(st_mic);
     rnnoise_destroy(st_y);
     rnnoise_destroy(st_out);
-    delete_tensor(mic);
-    delete_tensor(y);
-    delete_tensor(cspecs_mic);
-    delete_tensor(cspecs_y);
-    delete_tensor(features_mic);
-    delete_tensor(features_y);
     free_pfdkf(filter);
 
     if (write_wav_file(filename_out, out_wav, num_samples, sample_rate, 1, 16) == 0) {
